@@ -580,63 +580,6 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
             Book professional maintenance instantly without an account. Our intelligent dispatch engine finds and confirms the best available certified specialist in minutes.
           </p>
         </div>
-
-        {/* Tab Switcher (Customer Navigation) */}
-        <div className="flex items-center gap-1.5 sm:gap-2 bg-slate-800/80 p-1.5 rounded-2xl border border-slate-700/80 relative z-10 self-start md:self-auto flex-wrap">
-          <button
-            onClick={() => switchTab("dashboard")}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
-              activeTab === "dashboard"
-                ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
-                : "text-slate-300 hover:text-white hover:bg-slate-700/50"
-            }`}
-          >
-            <LayoutDashboard className="w-4 h-4 text-blue-400" /> Dashboard
-          </button>
-          <button
-            onClick={() => switchTab("book")}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
-              activeTab === "book"
-                ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
-                : "text-slate-300 hover:text-white hover:bg-slate-700/50"
-            }`}
-          >
-            <Wrench className="w-4 h-4 text-blue-400" /> Book a Service
-          </button>
-          <button
-            onClick={() => switchTab("history")}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
-              activeTab === "history"
-                ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
-                : "text-slate-300 hover:text-white hover:bg-slate-700/50"
-            }`}
-          >
-            <Clock className="w-4 h-4 text-blue-400" /> My Booking History
-          </button>
-          <button
-            onClick={() => switchTab("track")}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
-              activeTab === "track"
-                ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
-                : "text-slate-300 hover:text-white hover:bg-slate-700/50"
-            }`}
-          >
-            <Search className="w-4 h-4 text-blue-400" /> Track My Booking
-          </button>
-          <button
-            onClick={() => {
-              switchTab("profile");
-              if (user) fetchCustomerProfile();
-            }}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
-              activeTab === "profile"
-                ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
-                : "text-slate-300 hover:text-white hover:bg-slate-700/50"
-            }`}
-          >
-            <User className="w-4 h-4 text-blue-400" /> My Profile
-          </button>
-        </div>
       </div>
 
       {/* VIEW 0: CUSTOMER DASHBOARD (PART 1 Core Requirement) */}
