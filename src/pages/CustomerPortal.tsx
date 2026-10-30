@@ -554,19 +554,6 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
       {/* Customer Branding Header */}
       <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white p-8 rounded-3xl shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
         <div className="relative z-10">
-          {onBack && (
-            <button
-              type="button"
-              onClick={() => {
-                if (step > 1 && activeTab === "book") setStep(step - 1);
-                else onBack();
-              }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition border border-white/20 shadow-sm cursor-pointer mb-3"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back</span>
-            </button>
-          )}
           <div className="flex items-center gap-2 mb-2">
             <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-500/20 text-blue-300 border border-blue-400/30 tracking-wider uppercase">
               Fast, Certified Home Services

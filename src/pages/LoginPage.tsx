@@ -1,3 +1,4 @@
+import { CuteComputerMascot } from "../components/CuteComputerMascot";
 import React, { useState } from "react";
 import { Grid, Shield, User, Wrench, Lock, Mail, ArrowRight, AlertCircle, Sparkles, ChevronDown } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -81,23 +82,48 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   ];
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center p-4">
-      <div className="max-w-md w-full space-y-6">
-        {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-700 via-blue-600 to-indigo-700 text-white items-center justify-center shadow-xl shadow-blue-600/20">
-            <Grid className="w-7 h-7" />
+    <div className="min-h-[85vh] flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background Ambient Glow Lights */}
+      <div className="absolute -top-32 -left-32 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none animate-pulse-glow" />
+      <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none animate-float-reverse" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-tr from-blue-400/5 to-purple-400/5 rounded-full blur-3xl pointer-events-none animate-pulse-glow" />
+
+      <div className="max-w-md w-full space-y-5 relative z-10 animate-slide-up">
+        {/* Brand Header with Official Logo */}
+        <div className="text-center space-y-2.5">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-white/90 border border-slate-200/90 shadow-xs text-slate-700 backdrop-blur-sm">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Autonomous Dispatch Engine</span>
+            <span className="text-slate-300">•</span>
+            <span className="text-blue-600 font-semibold">Dijkstra Routing Active</span>
           </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-            DISPATCH<span className="text-blue-600">GRID</span>
-          </h1>
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            Intelligent Workforce Scheduling & Recovery
-          </p>
+
+          <div className="flex justify-center">
+            <div className="relative group cursor-pointer">
+              <div className="absolute -inset-1.5 bg-gradient-to-r from-blue-600 via-cyan-500 to-indigo-600 rounded-3xl blur-md opacity-60 group-hover:opacity-100 transition duration-500 animate-pulse-glow" />
+              <img
+                src="/dispatchgrid-logo.png"
+                alt="DispatchGrid - Intelligent Scheduling & Recovery"
+                className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-2xl object-cover shadow-2xl border-2 border-white/40 ring-4 ring-blue-500/20 transform group-hover:scale-105 transition-all duration-300"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-0.5">
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+              DISPATCH<span className="text-blue-600">GRID</span>
+            </h1>
+            <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+              Intelligent Workforce Scheduling & Recovery
+            </p>
+          </div>
         </div>
 
+        {/* Interactive Cute Computer Mascot (Spline 3D Follow Cursor Scene Recreation) */}
+        <CuteComputerMascot role={selectedRole} isSubmitting={isSubmitting} />
+
         {/* Common Login Card */}
-        <div className="bg-white p-6 sm:p-7 rounded-3xl border border-slate-200/90 shadow-xl shadow-slate-200/50 space-y-5">
+        <div className="bg-white/95 backdrop-blur-sm p-6 sm:p-7 rounded-3xl border border-slate-200/90 shadow-2xl shadow-slate-200/60 space-y-5 transition-all">
           {/* Role Selection (Mandatory Section) */}
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide">
@@ -107,9 +133,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               <button
                 type="button"
                 onClick={() => handleRoleChange("CUSTOMER")}
-                className={`py-2.5 px-3 rounded-xl text-xs font-bold transition flex flex-col items-center gap-1 border ${
+                className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all duration-200 flex flex-col items-center gap-1 border cursor-pointer hover:-translate-y-0.5 active:translate-y-0 ${
                   selectedRole === "CUSTOMER"
-                    ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20"
+                    ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/30 scale-[1.02]"
                     : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900"
                 }`}
               >
@@ -120,9 +146,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               <button
                 type="button"
                 onClick={() => handleRoleChange("ADMIN")}
-                className={`py-2.5 px-3 rounded-xl text-xs font-bold transition flex flex-col items-center gap-1 border ${
+                className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all duration-200 flex flex-col items-center gap-1 border cursor-pointer hover:-translate-y-0.5 active:translate-y-0 ${
                   selectedRole === "ADMIN"
-                    ? "bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-500/20"
+                    ? "bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-500/30 scale-[1.02]"
                     : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900"
                 }`}
               >
@@ -133,9 +159,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               <button
                 type="button"
                 onClick={() => handleRoleChange("TECHNICIAN")}
-                className={`py-2.5 px-3 rounded-xl text-xs font-bold transition flex flex-col items-center gap-1 border ${
+                className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all duration-200 flex flex-col items-center gap-1 border cursor-pointer hover:-translate-y-0.5 active:translate-y-0 ${
                   selectedRole === "TECHNICIAN"
-                    ? "bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-500/20"
+                    ? "bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-500/30 scale-[1.02]"
                     : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900"
                 }`}
               >

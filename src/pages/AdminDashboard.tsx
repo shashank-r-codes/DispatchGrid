@@ -441,16 +441,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, activeSu
       {/* Top Banner with Back Button */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900 text-white p-6 rounded-2xl border border-slate-800 shadow-md">
         <div>
-          {onBack && (
-            <button
-              type="button"
-              onClick={onBack}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-bold transition border border-slate-700 shadow-sm cursor-pointer mb-2"
-            >
-              <ArrowLeft className="w-3.5 h-3.5 text-blue-400" />
-              <span>Back</span>
-            </button>
-          )}
           <div className="flex items-center gap-2 mb-1">
             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase tracking-wider">
               Admin & Dispatcher Command Center

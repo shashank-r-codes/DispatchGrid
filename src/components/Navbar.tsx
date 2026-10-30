@@ -134,9 +134,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="flex items-center gap-2.5 cursor-pointer select-none group"
               onClick={handleBrandClick}
             >
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-700 flex items-center justify-center shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform duration-150">
-                <Grid className="w-5 h-5 text-white" />
-              </div>
+              <img
+                src="/dispatchgrid-logo.png"
+                alt="DispatchGrid Logo"
+                className="w-10 h-10 rounded-xl object-cover shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform duration-150 border border-blue-500/30"
+              />
               <div>
                 <div className="font-black text-sm tracking-tight flex items-center gap-1 leading-none">
                   DISPATCH<span className="text-blue-400">GRID</span>

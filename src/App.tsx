@@ -20,7 +20,13 @@ const MainAppContent: React.FC = () => {
   const [customerSubTab, setCustomerSubTab] = useState<string>("dashboard");
   const [technicianSubTab, setTechnicianSubTab] = useState<string>("dashboard");
   const [adminSubTab, setAdminSubTab] = useState<string>("overview");
-  const [historyStack, setHistoryStack] = useState<string[]>([]);
+  interface NavHistoryItem {
+    tab: string;
+    customerSubTab?: string;
+    technicianSubTab?: string;
+    adminSubTab?: string;
+  }
+  const [historyStack, setHistoryStack] = useState<NavHistoryItem[]>([]);
 
   // Global modals
   const [isBookingModalOpen, setIsBookingModalOpen] = useState<boolean>(false);
@@ -49,31 +55,69 @@ const MainAppContent: React.FC = () => {
     }
   }, [user, role, isLoading]);
 
-  const navigateTo = (newTab: string) => {
-    if (newTab === currentTab) return;
-    setHistoryStack((prev) => [...prev, currentTab]);
+  const navigateTo = (
+    newTab: string,
+    subTabChange?: { customer?: string; technician?: string; admin?: string }
+  ) => {
+    const nextCustomerSub = subTabChange?.customer || customerSubTab;
+    const nextTechSub = subTabChange?.technician || technicianSubTab;
+    const nextAdminSub = subTabChange?.admin || adminSubTab;
+
+    if (
+      newTab === currentTab &&
+      nextCustomerSub === customerSubTab &&
+      nextTechSub === technicianSubTab &&
+      nextAdminSub === adminSubTab
+    ) {
+      return;
+    }
+
+    setHistoryStack((prev) => [
+      ...prev,
+      {
+        tab: currentTab,
+        customerSubTab,
+        technicianSubTab,
+        adminSubTab,
+      },
+    ]);
+
     setCurrentTab(newTab);
+    if (subTabChange?.customer) setCustomerSubTab(subTabChange.customer);
+    if (subTabChange?.technician) setTechnicianSubTab(subTabChange.technician);
+    if (subTabChange?.admin) setAdminSubTab(subTabChange.admin);
   };
 
   // Consistent Back button behavior across desktop and mobile
   const handleBack = () => {
     if (historyStack.length > 0) {
       const nextHistory = [...historyStack];
-      let prevTab = nextHistory.pop()!;
+      let prev = nextHistory.pop()!;
       // Do not send authenticated users back to login screen
-      if (user && prevTab === "login") {
-        if (role === "ADMIN") prevTab = "admin-dashboard";
-        else if (role === "TECHNICIAN") prevTab = "technician-portal";
-        else prevTab = "customer-portal";
+      if (user && prev.tab === "login") {
+        if (role === "ADMIN") prev = { tab: "admin-dashboard", adminSubTab: "overview" };
+        else if (role === "TECHNICIAN") prev = { tab: "technician-portal", technicianSubTab: "dashboard" };
+        else prev = { tab: "customer-portal", customerSubTab: "dashboard" };
       }
       setHistoryStack(nextHistory);
-      setCurrentTab(prevTab);
+      setCurrentTab(prev.tab);
+      if (prev.customerSubTab) setCustomerSubTab(prev.customerSubTab);
+      if (prev.technicianSubTab) setTechnicianSubTab(prev.technicianSubTab);
+      if (prev.adminSubTab) setAdminSubTab(prev.adminSubTab);
     } else {
       // Fallback to role-specific home dashboard
-      if (role === "ADMIN") setCurrentTab("admin-dashboard");
-      else if (role === "TECHNICIAN") setCurrentTab("technician-portal");
-      else if (role === "CUSTOMER") setCurrentTab("customer-portal");
-      else setCurrentTab("login");
+      if (role === "ADMIN") {
+        setCurrentTab("admin-dashboard");
+        setAdminSubTab("overview");
+      } else if (role === "TECHNICIAN") {
+        setCurrentTab("technician-portal");
+        setTechnicianSubTab("dashboard");
+      } else if (role === "CUSTOMER") {
+        setCurrentTab("customer-portal");
+        setCustomerSubTab("dashboard");
+      } else {
+        setCurrentTab("login");
+      }
     }
   };
 
@@ -125,18 +169,15 @@ const MainAppContent: React.FC = () => {
         canGoBack={historyStack.length > 0}
         customerSubTab={customerSubTab}
         onSelectCustomerSubTab={(tab) => {
-          setCustomerSubTab(tab);
-          navigateTo("customer-portal");
+          navigateTo("customer-portal", { customer: tab });
         }}
         technicianSubTab={technicianSubTab}
         onSelectTechnicianSubTab={(tab) => {
-          setTechnicianSubTab(tab);
-          navigateTo("technician-portal");
+          navigateTo("technician-portal", { technician: tab });
         }}
         adminSubTab={adminSubTab}
         onSelectAdminSubTab={(tab) => {
-          setAdminSubTab(tab);
-          navigateTo("admin-dashboard");
+          navigateTo("admin-dashboard", { admin: tab });
         }}
         onOpenBookingModal={() => setIsBookingModalOpen(true)}
         onOpenDisruptionModal={handleOpenDisruption}
@@ -165,7 +206,7 @@ const MainAppContent: React.FC = () => {
                 onBack={handleBack}
                 onNavigateLogin={() => navigateTo("login")}
                 activeSubTab={customerSubTab}
-                onSubTabChange={(tab) => setCustomerSubTab(tab)}
+                onSubTabChange={(tab) => navigateTo("customer-portal", { customer: tab })}
               />
             )}
 
