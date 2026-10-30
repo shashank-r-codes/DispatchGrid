@@ -33,6 +33,24 @@ const MainAppContent: React.FC = () => {
   const [isDisruptionModalOpen, setIsDisruptionModalOpen] = useState<boolean>(false);
   const [isBenchmarkModalOpen, setIsBenchmarkModalOpen] = useState<boolean>(false);
 
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    return (localStorage.getItem("dg_theme") as "dark" | "light") || "light";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("dg_theme", theme);
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+  };
+
+
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
 
@@ -160,7 +178,7 @@ const MainAppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100/70 text-slate-900 font-sans flex flex-col selection:bg-blue-600 selection:text-white">
+    <div className={`min-h-screen font-sans flex flex-col selection:bg-blue-600 selection:text-white transition-colors duration-200 ${theme === "dark" ? "bg-slate-950 text-slate-100" : "bg-slate-100/70 text-slate-900"}`}>
       {/* Top Navigation Bar with Back Button */}
       <Navbar
         currentTab={currentTab}
@@ -183,6 +201,8 @@ const MainAppContent: React.FC = () => {
         onOpenDisruptionModal={handleOpenDisruption}
         onOpenBenchmarkModal={() => setIsBenchmarkModalOpen(true)}
         onNavigateLogin={() => navigateTo("login")}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       <main className="flex-1 pb-16">

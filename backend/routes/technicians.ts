@@ -656,6 +656,58 @@ techniciansRouter.get("/my/schedule", authenticateToken, requireRole("TECHNICIAN
   }
 });
 
+// Update technician profile details (Full name, phone, email, avatar, address, experience)
+techniciansRouter.put("/profile", authenticateToken, requireRole("TECHNICIAN", "ADMIN"), (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const targetUserId = req.user!.role === "ADMIN" && req.body.userId ? req.body.userId : req.user!.userId;
+    const { fullName, phone, email, profilePictureUrl, experienceYears, residentialAddress, city, pincode } = req.body;
+
+    const tx = db.transaction(() => {
+      // 1. Update users table
+      db.prepare(`
+        UPDATE users
+        SET full_name = COALESCE(?, full_name),
+            phone = COALESCE(?, phone),
+            email = COALESCE(?, email),
+            profile_picture_url = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = ?
+      `).run(
+        fullName !== undefined ? fullName : null,
+        phone !== undefined ? phone : null,
+        email !== undefined ? email : null,
+        profilePictureUrl !== undefined ? profilePictureUrl : null,
+        targetUserId
+      );
+
+      // 2. Update technician_profiles table
+      db.prepare(`
+        UPDATE technician_profiles
+        SET experience_years = COALESCE(?, experience_years),
+            residential_address = COALESCE(?, residential_address),
+            city = COALESCE(?, city),
+            pincode = COALESCE(?, pincode),
+            profile_picture_url = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = ?
+      `).run(
+        experienceYears !== undefined ? experienceYears : null,
+        residentialAddress !== undefined ? residentialAddress : null,
+        city !== undefined ? city : null,
+        pincode !== undefined ? pincode : null,
+        profilePictureUrl !== undefined ? profilePictureUrl : null,
+        targetUserId
+      );
+    });
+
+    tx();
+
+    return res.json({ success: true, message: "Technician profile updated successfully" });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || "Failed to update profile" });
+  }
+});
+
 // Update availability & working shift (triggers dynamic recovery if unavailable)
 techniciansRouter.put("/availability", authenticateToken, requireRole("TECHNICIAN", "ADMIN"), (req: AuthenticatedRequest, res: Response) => {
   try {

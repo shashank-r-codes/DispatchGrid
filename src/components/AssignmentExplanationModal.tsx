@@ -47,7 +47,7 @@ export const AssignmentExplanationModal: React.FC<AssignmentExplanationModalProp
             </div>
             <div className="flex items-center gap-4 text-xs font-semibold text-slate-700 bg-white px-3 py-2 rounded-lg border border-emerald-200 shadow-xs flex-shrink-0">
               <div>
-                <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Dijkstra Travel</span>
+                <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Transit Time</span>
                 <span className="text-slate-900 text-sm font-bold flex items-center gap-1">
                   <Route className="w-3.5 h-3.5 text-blue-600" /> {record.calculated_travel_time_minutes} mins
                 </span>

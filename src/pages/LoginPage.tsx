@@ -94,7 +94,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           <span className="font-bold tracking-tight">Autonomous Dispatch Engine</span>
           <span className="text-slate-300">•</span>
-          <span className="text-blue-600 font-semibold font-mono text-[11px]">Dijkstra Routing Active</span>
+          <span className="text-blue-600 font-semibold font-mono text-[11px]">Dynamic Routing Active</span>
         </div>
 
         {/* Centered Official Logo */}
@@ -132,7 +132,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                 <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200/70">
                   <span className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span>Dijkstra Road Routing</span>
+                    <span>Smart Route Optimization</span>
                   </span>
                   <span className="font-mono text-[10px] text-blue-600 font-bold">&lt; 1.8m Match SLA</span>
                 </div>

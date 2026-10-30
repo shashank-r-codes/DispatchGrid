@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import {
+  Sun,
+  Moon,
   Grid,
   Shield,
   User,
@@ -37,6 +39,8 @@ export interface NavbarProps {
   onOpenDisruptionModal?: () => void;
   onOpenBenchmarkModal?: () => void;
   onNavigateLogin?: () => void;
+  theme?: "dark" | "light";
+  onToggleTheme?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -54,6 +58,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenDisruptionModal,
   onOpenBenchmarkModal,
   onNavigateLogin,
+  theme = "light",
+  onToggleTheme,
 }) => {
   const { user, role, logout, notifications, markNotificationRead, markAllNotificationsRead } = useAuth();
   const [showNotifications, setShowNotifications] = useState<boolean>(false);
@@ -228,6 +234,22 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* RIGHT: Notifications, Profile / Status, Logout, Mobile Toggle */}
           <div className="flex items-center gap-2 sm:gap-2.5">
+                        {/* Theme Toggle (Dark / Light) */}
+            {onToggleTheme && (
+              <button
+                type="button"
+                onClick={onToggleTheme}
+                title={`Switch to ${theme === "dark" ? "Light" : "Dark"} Mode`}
+                className="h-9 w-9 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center justify-center cursor-pointer border border-slate-700/80 shadow-sm"
+              >
+                {theme === "dark" ? (
+                  <Sun className="w-4 h-4 text-amber-400" />
+                ) : (
+                  <Moon className="w-4 h-4 text-blue-300" />
+                )}
+              </button>
+            )}
+
             {user ? (
               <>
                 {/* Notification Bell Dropdown */}

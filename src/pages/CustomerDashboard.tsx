@@ -188,7 +188,7 @@ export const CustomerDashboard: React.FC = () => {
                         </div>
                         {b.estimatedTravelTimeMinutes ? (
                           <div className="text-right">
-                            <span className="text-[10px] text-slate-400 block">Dijkstra ETA</span>
+                            <span className="text-[10px] text-slate-400 block">Estimated ETA</span>
                             <span className="font-bold text-emerald-700">{b.estimatedTravelTimeMinutes} mins</span>
                           </div>
                         ) : null}

@@ -292,7 +292,7 @@ export const BookingWizardModal: React.FC<BookingWizardModalProps> = ({ isOpen, 
               <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-200 text-[11px] text-blue-900 flex items-start gap-2">
                 <MapPin className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
                 <div>
-                  <strong>Dijkstra Road Network Mapping:</strong> Coordinates ({latitude.toFixed(4)}, {longitude.toFixed(4)}) will be matched to the closest urban road intersection node for accurate transit routing.
+                  <strong>Smart Transit Mapping:</strong> Coordinates ({latitude.toFixed(4)}, {longitude.toFixed(4)}) will be matched to the closest urban road intersection node for accurate transit routing.
                 </div>
               </div>
             </div>
@@ -442,7 +442,7 @@ export const BookingWizardModal: React.FC<BookingWizardModalProps> = ({ isOpen, 
               </div>
 
               <div className="text-[11px] text-slate-500 text-center">
-                Upon submission, DispatchGrid's intelligent matching engine will calculate the optimal technician based on Dijkstra travel times, certifications, and availability.
+                Upon submission, DispatchGrid's intelligent matching engine will calculate the optimal technician based on optimized travel times, certifications, and availability.
               </div>
             </div>
           )}

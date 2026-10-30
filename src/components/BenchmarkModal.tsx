@@ -99,7 +99,7 @@ export const BenchmarkModal: React.FC<BenchmarkModalProps> = ({ isOpen, onClose 
             <div>
               <div className="text-xs font-bold text-slate-900">Run Real Algorithmic Optimization Benchmark</div>
               <div className="text-xs text-slate-500 mt-0.5">
-                Simulates real road network Dijkstra paths, hard constraints, and SLA deadline matching.
+                Simulates real road network transit routes, hard constraints, and SLA deadline matching.
               </div>
             </div>
             <button
@@ -149,7 +149,7 @@ export const BenchmarkModal: React.FC<BenchmarkModalProps> = ({ isOpen, onClose 
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                   <div className="text-[10px] text-slate-600 uppercase font-bold tracking-wider">Avg Travel Time</div>
                   <div className="text-xl font-extrabold text-slate-900 mt-1">{metrics.averageTravelMinutes} mins</div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">Dijkstra road routing</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">Smart road routing</div>
                 </div>
 
                 <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200">

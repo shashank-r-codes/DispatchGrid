@@ -1292,7 +1292,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
                     </div>
 
                     <div className="flex items-center justify-between text-[11px] text-slate-600">
-                      <span>Dijkstra Travel ETA:</span>
+                      <span>Estimated Travel ETA:</span>
                       <span className="font-bold text-slate-900">
                         ~{bookingConfirmation.allocation.estimatedTravelMinutes || bookingConfirmation.allocation.travelMinutes || 15} mins ({bookingConfirmation.allocation.distanceKm || 3.5} km)
                       </span>
@@ -1955,7 +1955,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
 
                       <div className="pt-2 border-t border-blue-200/60 grid grid-cols-2 gap-2 text-xs">
                         <div>
-                          <span className="text-[10px] text-slate-400 block">Dijkstra Road Distance</span>
+                          <span className="text-[10px] text-slate-400 block">Estimated Road Distance</span>
                           <span className="font-bold text-slate-900">{trackedBooking.distanceKm} km</span>
                         </div>
                         <div>
@@ -1991,7 +1991,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
                     </span>
                   </div>
                   <span className="text-[11px] text-slate-400">
-                    Calculated via Metro Dijkstra Road Network
+                    Calculated via Real-Time Metro Transit Network
                   </span>
                 </div>
 
@@ -2467,7 +2467,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
                         <span>DispatchGrid Certified Service Guarantee</span>
                       </div>
                       <p className="text-xs text-slate-600">
-                        Your bookings automatically benefit from Google OR-Tools CP-SAT scheduling optimization, Dijkstra metro shortest path routing, EPA-certified HVAC technicians, and instant emergency allocation.
+                        Your bookings automatically benefit from Google OR-Tools CP-SAT scheduling optimization, real-time transit route optimization, EPA-certified HVAC technicians, and instant emergency allocation.
                       </p>
                     </div>
                   </div>
@@ -2689,7 +2689,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
 
                   {selectedBookingForDetails.offerHistory.length > 1 && (
                     <div className="p-2.5 rounded-xl bg-purple-50 border border-purple-200/70 text-[11px] text-purple-900 leading-snug">
-                      <strong>Reallocation Record:</strong> When previous technician declined, DispatchGrid automatically evaluated remaining verified technicians in the service zone and dispatched an offer to the next nearest qualified candidate using Dijkstra road travel calculation.
+                      <strong>Reallocation Record:</strong> When previous technician declined, DispatchGrid automatically evaluated remaining verified technicians in the service zone and dispatched an offer to the next nearest qualified candidate using real-time transit calculation.
                     </div>
                   )}
                 </div>
@@ -2704,7 +2704,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
             {(selectedBookingForDetails.distanceKm > 0 || selectedBookingForDetails.assignedTechnicianId) && (
               <div className="bg-blue-50/70 p-4 sm:p-5 rounded-2xl border border-blue-200/80 space-y-2 text-xs">
                 <div className="text-[10px] font-bold text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
-                  <Navigation className="w-3.5 h-3.5" /> Dijkstra Road Travel & ETA
+                  <Navigation className="w-3.5 h-3.5" /> Transit Distance & ETA
                 </div>
                 <div className="grid grid-cols-3 gap-3 text-slate-800 font-semibold">
                   <div>

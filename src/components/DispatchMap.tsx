@@ -276,7 +276,7 @@ export const DispatchMap: React.FC<DispatchMapProps> = ({
           <div style="font-size: 11px; margin-bottom: 2px;">Status: <b>${b.bookingStatus}</b></div>
           <div style="font-size: 11px; margin-bottom: 2px;">Address: ${b.serviceAddress}</div>
           <div style="font-size: 11px; margin-bottom: 4px;">Assigned: <b>${b.assignedTechnicianName || "Unassigned"}</b></div>
-          ${b.estimatedTravelTimeMinutes ? `<div style="font-size: 11px; color:#16a34a; font-weight:600;">Est. Dijkstra Travel: ${b.estimatedTravelTimeMinutes} mins</div>` : ""}
+          ${b.estimatedTravelTimeMinutes ? `<div style="font-size: 11px; color:#16a34a; font-weight:600;">Est. Travel: ${b.estimatedTravelTimeMinutes} mins</div>` : ""}
         </div>
       `);
 
@@ -305,7 +305,7 @@ export const DispatchMap: React.FC<DispatchMapProps> = ({
         );
 
         polyline.bindTooltip(
-          `<b>Dijkstra Route</b>: ${assignedTech.fullName} &rarr; ${selectedBooking.bookingReference}<br/>Est. Travel: ${selectedBooking.estimatedTravelTimeMinutes || 15} mins`,
+          `<b>Transit Route</b>: ${assignedTech.fullName} &rarr; ${selectedBooking.bookingReference}<br/>Est. Travel: ${selectedBooking.estimatedTravelTimeMinutes || 15} mins`,
           { permanent: true, direction: "center" }
         );
 

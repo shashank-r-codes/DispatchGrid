@@ -359,7 +359,7 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({ timeline, on
                               onClick={() => setModalJob({ job, technician: t })}
                               className="absolute top-2 bottom-2 bg-indigo-100 hover:bg-indigo-200 border border-indigo-300 rounded text-[9px] font-bold text-indigo-900 flex items-center justify-center gap-0.5 px-1 cursor-pointer transition z-10 overflow-hidden shadow-2xs"
                               style={{ left: `${travelLeft}%`, width: `${travelWidth}%` }}
-                              title={`Travel time to ${job.bookingReference}: ${travelMinutes} mins via Dijkstra shortest road path`}
+                              title={`Travel time to ${job.bookingReference}: ${travelMinutes} mins via optimized transit route`}
                             >
                               <Car className="w-2.5 h-2.5 shrink-0 text-indigo-700" />
                               <span className="truncate text-[8px] font-mono">{travelMinutes}m</span>
@@ -473,7 +473,7 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({ timeline, on
                   <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Travel Time</span>
                   <span className="font-bold text-indigo-700 flex items-center gap-1 font-mono">
                     <Car className="w-3.5 h-3.5" />
-                    {modalJob.job.travelMinutes || 15} mins Dijkstra path
+                    {modalJob.job.travelMinutes || 15} mins transit route
                   </span>
                 </div>
 

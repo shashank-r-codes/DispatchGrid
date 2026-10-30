@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Clock,
   MapPin,
@@ -32,7 +32,7 @@ interface TechnicianPortalProps {
 }
 
 export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, activeSubTab, onSubTabChange }) => {
-  const { user, login, logout } = useAuth();
+  const { user, login, logout, refreshUserProfile } = useAuth();
   const { showToast } = useToast();
 
   const [loginEmail, setLoginEmail] = useState<string>("electrician1@dispatchgrid.demo");
@@ -551,7 +551,7 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
               <div>
                 <h3 className="font-extrabold text-base">You have {offers.length} pending job offer{offers.length > 1 ? "s" : ""}!</h3>
                 <p className="text-xs text-amber-100 mt-0.5">
-                  Review customer service details, appointment window, and Dijkstra travel time before accepting or rejecting.
+                  Review customer service details, appointment window, and estimated transit time before accepting or rejecting.
                 </p>
               </div>
               <button
@@ -725,7 +725,7 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
                       <span className="font-semibold text-slate-800">{b.serviceAddress}</span>
                     </div>
                     <div className="text-emerald-700 font-bold">
-                      Dijkstra Travel: ~{b.estimatedTravelTimeMinutes || 15} mins
+                      Estimated Travel: ~{b.estimatedTravelTimeMinutes || 15} mins
                     </div>
                   </div>
 

@@ -35,7 +35,7 @@ export const CuteComputerMascot: React.FC<CuteComputerMascotProps> = ({
       setTilt({ x: tiltX, y: tiltY });
 
       // Pupil offset (-10px to +10px)
-      const maxPupil = 9;
+      const maxPupil = 14;
       const angle = Math.atan2(deltaY, deltaX);
       const intensity = Math.min(dist / 200, 1);
       const pupilX = Math.cos(angle) * maxPupil * intensity;
@@ -59,7 +59,7 @@ export const CuteComputerMascot: React.FC<CuteComputerMascotProps> = ({
   // Dynamic reaction to role change
   useEffect(() => {
     if (role === "ADMIN") {
-      setSpeechText("Admin mode: Full Dijkstra control!");
+      setSpeechText("Admin mode: Intelligent command!");
     } else if (role === "CUSTOMER") {
       setSpeechText("Customer mode: Instant dispatch!");
     } else if (role === "TECHNICIAN") {
@@ -119,19 +119,19 @@ export const CuteComputerMascot: React.FC<CuteComputerMascotProps> = ({
         {/* Antenna */}
         <div className="absolute -top-6 left-1/2 -translate-x-1/2 flex flex-col items-center">
           <div
-            className={`w-3.5 h-3.5 rounded-full ${screenTheme.led} shadow-md ${screenTheme.eyeGlow} animate-pulse`}
+            className={`w-4 h-4 rounded-full ${screenTheme.led} shadow-md ${screenTheme.eyeGlow} animate-pulse`}
           />
-          <div className="w-1 h-3.5 bg-slate-400" />
+          <div className="w-1.5 h-4 bg-slate-400" />
         </div>
 
         {/* Outer Monitor Body */}
-        <div className="w-40 sm:w-44 h-32 sm:h-36 rounded-3xl bg-gradient-to-b from-slate-200 via-slate-100 to-slate-300 p-2.5 shadow-2xl shadow-slate-900/25 border-4 border-slate-300/80 relative overflow-hidden flex flex-col items-center justify-between">
+        <div className="w-60 sm:w-68 h-48 sm:h-54 rounded-[32px] bg-gradient-to-b from-slate-200 via-slate-100 to-slate-300 p-3.5 shadow-2xl shadow-slate-900/30 border-4 border-slate-300/90 relative overflow-hidden flex flex-col items-center justify-between">
           {/* Top highlight / specular reflection */}
           <div className="absolute top-0 left-0 right-0 h-4 bg-white/60 rounded-t-3xl blur-[1px] pointer-events-none" />
 
           {/* Inner CRT Screen Bezel */}
           <div
-            className={`w-full h-24 sm:h-28 rounded-2xl bg-slate-950 p-2 relative overflow-hidden border-2 ${screenTheme.border} shadow-inner flex flex-col items-center justify-center`}
+            className={`w-full h-36 sm:h-42 rounded-2xl bg-slate-950 p-3 relative overflow-hidden border-2 ${screenTheme.border} shadow-inner flex flex-col items-center justify-center`}
           >
             {/* Ambient CRT Scanline Effect */}
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/5 to-transparent h-6 pointer-events-none animate-scanline" />
@@ -142,55 +142,55 @@ export const CuteComputerMascot: React.FC<CuteComputerMascotProps> = ({
             />
 
             {/* Eyes Container */}
-            <div className="relative z-10 flex items-center justify-center gap-6 w-full">
+            <div className="relative z-10 flex items-center justify-center gap-8 w-full mt-2">
               {/* Left Eye */}
               <div
-                className={`w-5 sm:w-6 h-7 sm:h-8 rounded-full bg-slate-900 border-2 border-cyan-400/80 relative overflow-hidden flex items-center justify-center transition-all ${
+                className={`w-9 sm:w-11 h-13 sm:h-15 rounded-full bg-slate-900 border-[3px] border-cyan-400/90 relative overflow-hidden flex items-center justify-center transition-all ${
                   isBlinking ? "scale-y-0 opacity-20" : "scale-y-100 opacity-100"
                 }`}
               >
                 {/* Pupil following mouse */}
                 <div
-                  className="w-3.5 sm:w-4 h-5 sm:h-6 rounded-full bg-gradient-to-b from-cyan-300 to-blue-500 shadow-md shadow-cyan-400/80 relative"
+                  className="w-6 sm:w-7 h-9 sm:h-11 rounded-full bg-gradient-to-b from-cyan-300 to-blue-500 shadow-md shadow-cyan-400/80 relative"
                   style={{
                     transform: `translate(${eyeOffset.x}px, ${eyeOffset.y}px)`,
                     transition: "transform 0.05s linear",
                   }}
                 >
                   {/* Glossy catchlight */}
-                  <span className="absolute top-1 left-1 w-1.5 h-1.5 rounded-full bg-white" />
+                  <span className="absolute top-1 left-1 w-2.5 h-2.5 rounded-full bg-white shadow-xs" />
                 </div>
               </div>
 
               {/* Right Eye */}
               <div
-                className={`w-5 sm:w-6 h-7 sm:h-8 rounded-full bg-slate-900 border-2 border-cyan-400/80 relative overflow-hidden flex items-center justify-center transition-all ${
+                className={`w-9 sm:w-11 h-13 sm:h-15 rounded-full bg-slate-900 border-[3px] border-cyan-400/90 relative overflow-hidden flex items-center justify-center transition-all ${
                   isBlinking ? "scale-y-0 opacity-20" : "scale-y-100 opacity-100"
                 }`}
               >
                 {/* Pupil following mouse */}
                 <div
-                  className="w-3.5 sm:w-4 h-5 sm:h-6 rounded-full bg-gradient-to-b from-cyan-300 to-blue-500 shadow-md shadow-cyan-400/80 relative"
+                  className="w-6 sm:w-7 h-9 sm:h-11 rounded-full bg-gradient-to-b from-cyan-300 to-blue-500 shadow-md shadow-cyan-400/80 relative"
                   style={{
                     transform: `translate(${eyeOffset.x}px, ${eyeOffset.y}px)`,
                     transition: "transform 0.05s linear",
                   }}
                 >
                   {/* Glossy catchlight */}
-                  <span className="absolute top-1 left-1 w-1.5 h-1.5 rounded-full bg-white" />
+                  <span className="absolute top-1 left-1 w-2.5 h-2.5 rounded-full bg-white shadow-xs" />
                 </div>
               </div>
             </div>
 
             {/* Cute Smile / Mouth */}
             <div className="relative z-10 mt-1 flex justify-center">
-              <div className="w-5 h-2 border-b-2 border-cyan-300/80 rounded-full" />
+              <div className="w-7 h-3 border-b-2 border-cyan-300/90 rounded-full" />
             </div>
 
             {/* Retro CRT Grid Scan Indicator */}
             <div className="absolute bottom-1 right-2 flex items-center gap-1 opacity-60">
               <span className={`w-1 h-1 rounded-full ${screenTheme.led} animate-ping`} />
-              <span className="text-[7px] text-cyan-400/70 font-mono tracking-tighter">AI.GRID</span>
+              <span className="text-[8px] text-cyan-400/80 font-mono tracking-wider">DSP</span>
             </div>
           </div>
 
@@ -206,14 +206,14 @@ export const CuteComputerMascot: React.FC<CuteComputerMascotProps> = ({
         </div>
 
         {/* Computer Stand / Base */}
-        <div className="w-20 h-3 bg-slate-300 rounded-b-xl mx-auto shadow-md border-t border-slate-400" />
-        <div className="w-28 h-2.5 bg-slate-400 rounded-full mx-auto shadow-lg" />
+        <div className="w-28 h-4 bg-slate-300 rounded-b-xl mx-auto shadow-md border-t border-slate-400" />
+        <div className="w-40 h-3 bg-slate-400 rounded-full mx-auto shadow-lg" />
       </div>
 
       {/* Floating Status Pill */}
       <div className="mt-2.5 flex items-center gap-2">
         <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1">
-          <span>Interactive 3D Follow Cursor</span>
+          <span>Interactive 3D Assistant</span>
           <span className="text-slate-300">•</span>
           <span className="text-blue-600 font-mono">Spline Inspired</span>
         </span>

@@ -445,7 +445,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, activeSu
             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase tracking-wider">
               Admin & Dispatcher Command Center
             </span>
-            <span className="text-xs text-slate-400">Road Network Dijkstra &bull; OR-Tools CP-SAT &bull; Real-Time Recovery</span>
+            <span className="text-xs text-slate-400">Real-Time Routing &bull; Constraint Optimization &bull; Dynamic Recovery</span>
           </div>
           <h1 className="text-2xl font-extrabold tracking-tight">Workforce Dispatch & Recovery Grid</h1>
           <p className="text-xs text-slate-400 mt-1">
@@ -608,7 +608,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, activeSu
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-start gap-3">
             <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
             <div className="text-xs text-blue-900 leading-relaxed">
-              <strong>Automatic Job Allotment Active:</strong> When customers book online, DispatchGrid automatically filters certified technicians (EPA Section 608 for AC, Master Plumber for Plumbing, Wireman for Electrical), calculates travel via Dijkstra road network, and issues job offers immediately. Admin intervention is only required for manual overrides or unassigned bottlenecks.
+              <strong>Automatic Job Allotment Active:</strong> When customers book online, DispatchGrid automatically filters certified technicians (EPA Section 608 for AC, Master Plumber for Plumbing, Wireman for Electrical), calculates travel via optimized road routing, and issues job offers immediately. Admin intervention is only required for manual overrides or unassigned bottlenecks.
             </div>
           </div>
 
@@ -920,7 +920,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, activeSu
                               <div>
                                 <div className="font-bold text-slate-900">{b.assignedTechnicianName}</div>
                                 <div className="text-[10px] text-emerald-700 font-semibold">
-                                  Dijkstra Travel: {b.estimatedTravelTimeMinutes || 15} mins
+                                  Transit Time: {b.estimatedTravelTimeMinutes || 15} mins
                                 </div>
                               </div>
                             ) : (
@@ -989,7 +989,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, activeSu
                                           <th className="py-2 px-3">Attempt</th>
                                           <th className="py-2 px-3">Technician</th>
                                           <th className="py-2 px-3">Road Distance</th>
-                                          <th className="py-2 px-3">Dijkstra Travel</th>
+                                          <th className="py-2 px-3">Transit Time</th>
                                           <th className="py-2 px-3">Offer Status</th>
                                           <th className="py-2 px-3">Rejection / Response Reason</th>
                                           <th className="py-2 px-3">Offered At</th>
@@ -1221,7 +1221,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, activeSu
         <div className="space-y-4">
           <div className="flex items-center justify-between text-xs text-slate-600">
             <span>
-              Real-time visualization of Metro Road Network, live technician locations, and Dijkstra travel paths.
+              Real-time visualization of Metro Road Network, live technician locations, and optimized transit paths.
             </span>
             {selectedBooking && (
               <span className="font-mono bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-200">
