@@ -1,0 +1,1327 @@
+# DISPATCHGRID – COMPLETE PROJECT MASTER PROMPT
+## Phase 1 to Phase 8 – End-to-End Development
+
+Act as a senior software architect, full-stack developer, database engineer and intelligent scheduling systems developer.
+
+Build a complete, functional, scalable application called:
+
+# DISPATCHGRID
+### Intelligent Workforce Scheduling & Recovery Platform
+
+The objective is to develop a service-booking and workforce-management platform that connects customers with verified technicians and intelligently manages job assignments, schedules, routes, emergencies and unexpected disruptions.
+
+The application must be a working product, not just a frontend prototype.
+
+---
+
+# 1. PROJECT OVERVIEW
+
+DispatchGrid supports three maintenance service categories:
+
+1. Electrical
+2. AC
+3. Plumbing
+
+The platform has three main user roles:
+
+**Customer**
+- Registers and logs in.
+- Searches for services.
+- Books appointments.
+- Provides their location.
+- Receives suitable technician assignments.
+- Tracks appointments.
+- Gives feedback.
+
+**Technician**
+- Registers and submits professional information.
+- Adds skills and certifications.
+- Specifies working hours and service areas.
+- Gets verified by an administrator.
+- Receives suitable job assignments.
+- Updates job progress.
+- Reports delays and unavailability.
+
+**Admin / Dispatcher**
+- Verifies technicians.
+- Manages customers and services.
+- Monitors bookings.
+- Manages job priorities.
+- Monitors schedules.
+- Handles emergencies.
+- Manages technician assignments.
+- Reviews recovery operations.
+
+IMPORTANT CATEGORY RULE:
+
+AC is an organisational specialisation under the Electrical department, but it must have distinct skills and certifications. A general electrician must not automatically qualify for AC repair.
+
+---
+
+# 2. TECHNOLOGY STACK
+
+Frontend:
+- React.js
+- Vite
+- JavaScript
+- Tailwind CSS
+- React Router
+- Axios
+
+Backend:
+- Node.js
+- Express.js
+- REST APIs
+- JWT authentication
+- bcrypt
+
+Database:
+- MySQL
+- mysql2
+
+Scheduling Engine:
+- Python
+- Google OR-Tools CP-SAT
+
+Algorithms:
+- Priority Queue
+- Dijkstra's Algorithm
+- Greedy Scheduling
+- Weighted Assignment Scoring
+- Round Robin Fairness
+- Constraint-Based Optimization
+
+Maps:
+- Leaflet
+- OpenStreetMap
+
+Development:
+- VS Code
+- Postman
+- Git
+- GitHub
+
+Deployment:
+- Vercel or equivalent for frontend.
+- Railway, Render or equivalent for backend.
+- Managed MySQL database.
+- Separate Python scheduling service.
+
+---
+
+# PHASE 1 – PROJECT FOUNDATION & AUTHENTICATION
+
+## Objective
+
+Establish the project architecture, frontend, backend, database and authentication system.
+
+## 1.1 Project Structure
+
+Create a modular project structure:
+
+DispatchGrid/
+- frontend/
+  - src/
+    - components/
+    - pages/
+    - layouts/
+    - services/
+    - context/
+    - hooks/
+    - assets/
+- backend/
+  - config/
+  - controllers/
+  - middleware/
+  - models/
+  - routes/
+  - services/
+  - utils/
+  - app.js
+  - server.js
+- scheduling-engine/
+- database/
+- docs/
+- README.md
+- .gitignore
+
+You may improve this structure while maintaining clear separation of concerns.
+
+## 1.2 Database
+
+Create a MySQL database named dispatchgrid.
+
+Create an initial users table containing:
+
+- user_id
+- full_name
+- email
+- phone
+- password_hash
+- role
+- account_status
+- created_at
+- updated_at
+
+Use appropriate constraints and indexes.
+
+## 1.3 Authentication
+
+Implement:
+
+- Customer registration.
+- Technician registration.
+- Admin login.
+- User login.
+- Password hashing with bcrypt.
+- JWT authentication.
+- Protected routes.
+- Role-based authorization.
+- Logout functionality.
+
+Do not allow public users to register as administrators.
+
+Store secrets in environment variables.
+
+## 1.4 Initial Frontend
+
+Create:
+- Landing page.
+- Login page.
+- Customer registration page.
+- Technician registration page.
+- Customer dashboard.
+- Technician dashboard.
+- Admin dashboard.
+
+Create a professional SaaS interface with a modern navy, blue and white theme.
+
+## 1.5 Testing
+
+Verify:
+- Frontend starts.
+- Backend starts.
+- MySQL connection works.
+- Registration works.
+- Login works.
+- JWT authentication works.
+- Role restrictions work.
+
+**Deliverable:** Working project foundation with authentication and user roles.
+
+---
+
+# PHASE 2 – CUSTOMER & TECHNICIAN MANAGEMENT
+
+## Objective
+
+Build complete customer and technician profiles with administrator-controlled verification.
+
+## 2.1 Customer Management
+
+Customer profile fields:
+
+- Full name.
+- Email.
+- Phone.
+- Profile picture.
+- Address.
+- City.
+- State.
+- Pincode.
+- Latitude.
+- Longitude.
+
+Allow customers to:
+
+- View profiles.
+- Edit profiles.
+- Add multiple addresses.
+- Edit and delete addresses.
+- Select default addresses.
+
+## 2.2 Technician Management
+
+Technician profile fields:
+
+- Personal details.
+- Professional experience.
+- Service categories.
+- Skills.
+- Certifications.
+- Residential address.
+- City and locality.
+- Pincode.
+- Latitude and longitude.
+- Service areas.
+
+Support skills such as:
+
+Electrical:
+- Wiring.
+- Electrical fault diagnosis.
+- Switchboard repair.
+- Circuit breaker installation.
+
+AC:
+- AC installation.
+- AC servicing.
+- Refrigerant handling.
+- Compressor repair.
+- AC troubleshooting.
+
+Plumbing:
+- Pipe leakage repair.
+- Tap installation.
+- Drainage maintenance.
+- Water pump repair.
+
+Use relational database tables for skills and certifications.
+
+## 2.3 Technician Availability
+
+Allow technicians to configure:
+
+- Working days.
+- Start and end times.
+- Preferred service areas.
+- Unavailable days.
+- Availability status.
+
+## 2.4 Admin Verification
+
+Admin must be able to:
+
+- View technician registrations.
+- Review skills and certifications.
+- Review experience.
+- Review service areas.
+- Approve technicians.
+- Reject technicians.
+- Add review notes.
+- Suspend and reactivate accounts.
+
+Verification statuses:
+
+- PENDING
+- APPROVED
+- REJECTED
+
+Only approved technicians can become eligible for assignments.
+
+Maintain verification history.
+
+## 2.5 Testing
+
+Verify customer profile management, technician profile management, skills, availability, admin verification and role restrictions.
+
+**Deliverable:** Complete customer and technician management system.
+
+---
+
+# PHASE 3 – SERVICE CATALOGUE & APPOINTMENT BOOKING
+
+## Objective
+
+Allow customers to book Electrical, AC and Plumbing services.
+
+## 3.1 Service Catalogue
+
+Create the service catalogue.
+
+Electrical:
+- Wiring and rewiring.
+- Switchboard repair.
+- Circuit breaker installation.
+- Electrical fault diagnosis.
+- Fan installation and repair.
+- Lighting installation.
+
+AC:
+- AC installation.
+- AC servicing.
+- AC gas refilling.
+- AC troubleshooting.
+- Compressor repair.
+- AC maintenance.
+
+Plumbing:
+- Pipe leakage repair.
+- Tap installation.
+- Drainage cleaning.
+- Water pump repair.
+- Pipeline installation.
+
+Each service should contain:
+
+- Service ID.
+- Service name.
+- Category.
+- Description.
+- Estimated duration.
+- Configurable indicative price.
+- Active/inactive status.
+
+Admin can add, edit, activate and deactivate services.
+
+## 3.2 Booking Workflow
+
+Build a multi-step booking form.
+
+Step 1: Service selection.
+
+Step 2: Problem description and optional photographs.
+
+Step 3: Location selection:
+- Saved address.
+- New address.
+- Manual address entry.
+- Optional GPS coordinates.
+
+Step 4: Appointment preferences:
+- Preferred date.
+- Preferred start time.
+- Preferred end time.
+- Alternative appointment window.
+
+Step 5: Requested priority:
+- Normal.
+- High.
+- Emergency.
+
+Step 6: Review and submit.
+
+Generate a unique booking reference.
+
+## 3.3 Booking Management
+
+Implement booking statuses:
+
+- REQUESTED
+- UNDER_REVIEW
+- ACCEPTED
+- SCHEDULED
+- IN_PROGRESS
+- COMPLETED
+- CANCELLED
+- REJECTED
+
+A booking cannot be marked SCHEDULED without an actual technician and confirmed appointment time.
+
+Customers can view, track and cancel eligible bookings.
+
+Admins can:
+- View all bookings.
+- Filter by category, date and status.
+- Review emergency requests.
+- Verify priorities.
+- Accept or reject requests.
+- Add internal notes.
+
+Maintain booking status history.
+
+## 3.4 Database
+
+Create or extend:
+
+- services
+- bookings
+- booking_attachments
+- booking_status_history
+- booking_admin_notes
+
+Use foreign keys, indexes and unique booking references.
+
+## 3.5 Testing
+
+Verify all service categories, booking creation, address selection, appointment preferences, priority verification, cancellation and booking history.
+
+**Deliverable:** Complete customer-facing service-booking platform.
+
+---
+
+# PHASE 4 – INTELLIGENT TECHNICIAN MATCHING & AUTOMATIC ASSIGNMENT
+
+## Objective
+
+Develop the core intelligent assignment engine.
+
+The system must automatically find the most suitable technician for every accepted booking.
+
+Do not simply select the nearest technician.
+
+Consider:
+- Skills.
+- Certifications.
+- Availability.
+- Location.
+- Travel time.
+- Workload.
+- Existing assignments.
+- Customer preferences.
+- Job priority.
+- Appointment deadlines.
+
+## 4.1 Job Processing
+
+For every booking, retrieve:
+
+- Required service.
+- Required skills.
+- Required certifications.
+- Customer location.
+- Preferred appointment window.
+- Estimated duration.
+- Verified priority.
+
+Convert accepted bookings into scheduling-ready jobs.
+
+## 4.2 Priority Queue
+
+Implement a priority-based job queue.
+
+Consider:
+
+- Verified emergency status.
+- Job priority.
+- SLA deadline.
+- Waiting time.
+- Aging to prevent starvation.
+
+Emergency jobs receive higher consideration but must still satisfy mandatory scheduling constraints.
+
+Do not trust customer-selected emergency priority automatically.
+
+## 4.3 Technician Eligibility Filtering
+
+Filter technicians based on:
+
+- Approval status.
+- Mandatory skills.
+- Certifications.
+- Service area.
+- Working hours.
+- Availability.
+- Existing bookings.
+- Schedule conflicts.
+- Travel feasibility.
+- Deadline feasibility.
+
+Exclude any technician who violates a mandatory constraint.
+
+## 4.4 Dijkstra Travel-Time Calculation
+
+Represent the road network as a weighted graph:
+
+- Nodes represent locations.
+- Edges represent roads.
+- Edge weights represent travel time.
+
+Implement Dijkstra's algorithm to calculate shortest travel-time paths.
+
+Calculate travel times for eligible technicians.
+
+Do not use straight-line distance as a substitute for actual road-network routing.
+
+## 4.5 Customer Technician Preferences
+
+Allow customers to optionally request a preferred technician.
+
+Rules:
+
+- Honour the preference if the technician satisfies all mandatory constraints.
+- If not feasible, explain why.
+- Offer alternative technicians or appointment options.
+- Never allow Round Robin to override a valid customer preference.
+
+## 4.6 Assignment Scoring
+
+For jobs without a valid technician preference, implement:
+
+Assignment Cost =
+
+(w1 × Travel Cost)
+
++ (w2 × SLA Risk)
+
++ (w3 × Workload Imbalance)
+
++ (w4 × Schedule Disruption Cost)
+
+Use configurable and documented weights.
+
+Choose the feasible technician with the lowest assignment cost.
+
+Scoring must never override hard constraints.
+
+## 4.7 Round Robin Fairness
+
+Use Round Robin only as a tie-breaker among similarly suitable candidates.
+
+Consider:
+
+- Number of assigned jobs.
+- Total assigned working hours.
+- Recent workload.
+- Existing schedule commitments.
+
+Do not assign an unsuitable technician simply because it is their turn.
+
+## 4.8 Safe Assignment
+
+Before committing:
+
+- Revalidate availability.
+- Check overlapping jobs.
+- Verify skills.
+- Verify appointment feasibility.
+- Use database transactions.
+- Implement schedule versioning or locking.
+- Prevent duplicate assignments.
+
+If validation fails, retry or return the job to the unassigned queue.
+
+## 4.9 Explainability
+
+Record:
+
+- Assigned technician.
+- Booking ID.
+- Assignment timestamp.
+- Estimated travel time.
+- Assignment score.
+- Selection reason.
+- Rejected alternatives.
+- Rejection reasons.
+- Scheduling run ID.
+
+Provide human-readable explanations to dispatchers.
+
+## 4.10 Testing
+
+Test:
+- Correct skill match.
+- Missing skill.
+- Missing certification.
+- Unapproved technician.
+- Technician unavailable.
+- Overlapping assignment.
+- Out-of-zone technician.
+- Customer technician preference.
+- Emergency priority.
+- No eligible technician.
+- Concurrent scheduling requests.
+
+**Deliverable:** Working intelligent technician matching and automatic assignment engine.
+
+---
+
+# PHASE 5 – ADVANCED SCHEDULE OPTIMIZATION
+
+## Objective
+
+Optimize the complete workforce schedule rather than assigning jobs independently.
+
+Integrate Google OR-Tools CP-SAT through a separate Python scheduling service.
+
+## 5.1 Initial Schedule
+
+Use a Greedy algorithm to generate an initial feasible schedule.
+
+Consider:
+- Job priority.
+- Skills.
+- Availability.
+- Working hours.
+- Appointment windows.
+- Job duration.
+- Travel time.
+
+## 5.2 OR-Tools Integration
+
+Create a Python service using Google OR-Tools CP-SAT.
+
+The Node.js backend must communicate with it through REST APIs.
+
+## 5.3 Hard Constraints
+
+- Mandatory skill matching.
+- Required certifications.
+- Technician availability.
+- Working-hour restrictions.
+- No overlapping assignments.
+- Travel feasibility.
+- Service-area restrictions.
+- Appointment windows.
+- Completed assignment protection.
+- Ongoing assignment protection.
+
+## 5.4 Soft Constraints
+
+Minimize:
+
+- Total travel time.
+- SLA violations.
+- Workload imbalance.
+- Overtime.
+- Customer preference violations.
+- Unnecessary schedule changes.
+
+Soft preferences must never override hard constraints.
+
+## 5.5 Optimization Objective
+
+Implement:
+
+Total Cost =
+
+(w1 × Total Travel Time)
+
++ (w2 × SLA Penalty)
+
++ (w3 × Workload Imbalance)
+
++ (w4 × Overtime Penalty)
+
++ (w5 × Customer Preference Penalty)
+
++ (w6 × Schedule Change Penalty)
+
+Allow configuration of optimization weights.
+
+Set a configurable optimization time limit.
+
+Return the best feasible solution found within the limit.
+
+If optimization fails, preserve the previous valid schedule.
+
+## 5.6 Schedule Dashboard
+
+Display:
+
+- Technician names.
+- Assigned jobs.
+- Start and end times.
+- Travel times.
+- Breaks.
+- Availability.
+- Unassigned jobs.
+- SLA warnings.
+
+Provide a calendar view and map view.
+
+## 5.7 Testing
+
+Test multiple technicians, hundreds of jobs, conflicting windows, workload balancing, travel feasibility, SLA conflicts, solver timeout and infeasible schedules.
+
+**Deliverable:** Constraint-based optimized workforce scheduling system.
+
+---
+
+# PHASE 6 – DASHBOARDS, TRACKING & NOTIFICATIONS
+
+## Objective
+
+Provide operational interfaces for customers, technicians and administrators.
+
+## 6.1 Customer Dashboard
+
+Display:
+
+- Upcoming appointments.
+- Booking status.
+- Assigned technician.
+- Technician profile.
+- Appointment date and time.
+- Estimated arrival time.
+- Service address.
+- Booking history.
+
+Allow customers to:
+- Track appointments.
+- View technician details.
+- Receive notifications.
+- View completed services.
+- Submit ratings and reviews.
+
+## 6.2 Technician Dashboard
+
+Display:
+
+- Today's jobs.
+- Upcoming assignments.
+- Job addresses.
+- Customer information where permitted.
+- Appointment timings.
+- Travel time.
+- Workload.
+
+Allow technicians to:
+
+- View assignments.
+- Acknowledge assignments according to configured policy.
+- Mark ON_THE_WAY.
+- Mark IN_PROGRESS.
+- Mark COMPLETED.
+- Report delays.
+- Report unavailability.
+- Add completion notes.
+
+## 6.3 Admin Dashboard
+
+Display:
+
+- Total bookings.
+- Pending jobs.
+- Assigned jobs.
+- Unassigned jobs.
+- Jobs in progress.
+- Completed jobs.
+- Cancelled jobs.
+- Emergency requests.
+- Available technicians.
+- Unavailable technicians.
+- SLA warnings.
+
+Provide:
+
+- Calendar view.
+- Technician schedule view.
+- Map view.
+- Job filters.
+- Workload distribution.
+- Manual assignment and reassignment.
+- Assignment explanations.
+
+## 6.4 Job Status Lifecycle
+
+Use controlled transitions:
+
+- REQUESTED
+- UNDER_REVIEW
+- ACCEPTED
+- SCHEDULED
+- TECHNICIAN_ACCEPTED
+- ON_THE_WAY
+- IN_PROGRESS
+- COMPLETED
+- CANCELLED
+- REJECTED
+
+Prevent invalid transitions.
+
+Maintain status history with timestamps and user IDs.
+
+## 6.5 Notifications
+
+Implement an extensible notification service.
+
+Support in-app notifications and email notifications if configured.
+
+Notify customers about:
+
+- Booking received.
+- Booking accepted or rejected.
+- Technician assigned.
+- Appointment changes.
+- Technician on the way.
+- Job completed.
+- Cancellation.
+
+Notify technicians about:
+
+- New assignments.
+- Assignment changes.
+- Emergency requests.
+- Appointment updates.
+
+Notify administrators about:
+
+- Emergency requests.
+- Unassigned jobs.
+- Technician unavailability.
+- SLA risks.
+
+## 6.6 Customer Feedback
+
+After job completion, allow customers to provide:
+
+- Star rating.
+- Written review.
+- Service quality feedback.
+
+Prevent duplicate reviews for the same booking unless an explicit editing mechanism exists.
+
+## 6.7 Testing
+
+Verify role-specific dashboards, access restrictions, status transitions, notifications, job completion and reviews.
+
+**Deliverable:** Complete operational dashboard and tracking system.
+
+---
+
+# PHASE 7 – EMERGENCY MANAGEMENT & DYNAMIC SCHEDULE RECOVERY
+
+## Objective
+
+Develop the disruption-aware recovery engine.
+
+DispatchGrid must adapt when unexpected real-world situations affect technician schedules.
+
+## 7.1 Disruption Types
+
+Support:
+
+- Technician sickness.
+- Technician unavailability.
+- Vehicle breakdown.
+- Unexpected job delays.
+- Emergency service requests.
+- Job cancellations.
+- Customer appointment changes.
+- Travel-time changes.
+
+## 7.2 Emergency Verification
+
+When a customer submits an emergency:
+
+1. Register the request.
+2. Mark requested priority as EMERGENCY.
+3. Notify dispatcher.
+4. Verify priority through configured rules or admin approval.
+5. Store verified priority separately.
+6. Send verified emergencies into priority-aware scheduling.
+
+## 7.3 Reserved Emergency Capacity
+
+Allow configurable emergency capacity by:
+
+- Technician.
+- Service category.
+- Region.
+- Working period.
+
+Example:
+
+| Time | Assignment |
+|---|---|
+| 9:00–10:00 | Job A |
+| 10:00–11:00 | Job B |
+| 11:00–11:30 | Emergency capacity |
+| 11:30–13:00 | Job C |
+
+An emergency arriving at 11:10 should be evaluated against the reserved interval.
+
+Do not reserve identical capacity for every technician.
+
+## 7.4 Technician Unavailability Recovery
+
+When a technician becomes unavailable:
+
+1. Update technician status.
+2. Identify affected future assignments.
+3. Protect completed jobs.
+4. Protect ongoing work.
+5. Find alternative eligible technicians.
+6. Check skills and certifications.
+7. Calculate travel times.
+8. Check deadlines.
+9. Optimize affected schedules.
+10. Validate the new schedule.
+11. Commit safely.
+12. Notify affected users.
+
+## 7.5 Unexpected Delay Recovery
+
+When a technician reports a delay:
+
+1. Update estimated completion time.
+2. Recalculate technician availability.
+3. Identify affected future jobs.
+4. Check appointment feasibility.
+5. Find alternatives if necessary.
+6. Minimize unnecessary schedule changes.
+7. Notify affected customers.
+
+## 7.6 Emergency Recovery Workflow
+
+When a verified emergency arrives:
+
+1. Add it to the priority-aware queue.
+2. Find eligible technicians.
+3. Check reserved emergency capacity.
+4. Calculate travel times.
+5. Evaluate existing schedule impact.
+6. Select the best feasible technician.
+7. Reassign future jobs only if necessary.
+8. Optimize affected schedules.
+9. Validate constraints.
+10. Commit the revised schedule.
+11. Notify affected users.
+12. Record recovery history.
+
+## 7.7 Mandatory Recovery Rules
+
+- Never reassign completed jobs.
+- Protect ongoing assignments.
+- Never create overlapping jobs.
+- Never assign technicians without mandatory skills.
+- Never violate working-hour restrictions.
+- Minimize unnecessary schedule changes.
+- Explain every reassignment.
+- Preserve the last valid schedule if recovery fails.
+- Alert the dispatcher when no valid recovery exists.
+
+## 7.8 Recovery Audit
+
+Record:
+
+- Disruption type.
+- Affected technician.
+- Affected jobs.
+- Previous assignments.
+- Revised assignments.
+- Reason for changes.
+- Recovery execution time.
+- Success or failure.
+- Notifications sent.
+
+## 7.9 Testing
+
+Test technician sickness, vehicle breakdown, delayed jobs, multiple emergencies, no replacement technician, SLA conflicts, concurrent disruptions, duplicate requests and optimizer failures.
+
+**Deliverable:** Dynamic schedule recovery engine.
+
+---
+
+# PHASE 8 – TESTING, SCALABILITY, SECURITY & DEPLOYMENT
+
+## Objective
+
+Prepare DispatchGrid for reliable real-world operation and future expansion.
+
+## 8.1 Complete Functional Testing
+
+Test complete workflows for:
+
+Customer:
+- Registration.
+- Login.
+- Profile.
+- Address management.
+- Service selection.
+- Booking.
+- Appointment tracking.
+- Cancellation.
+- Feedback.
+
+Technician:
+- Registration.
+- Verification.
+- Skills.
+- Certifications.
+- Availability.
+- Assignments.
+- Job updates.
+- Delay reporting.
+
+Admin:
+- Verification.
+- Service management.
+- Booking management.
+- Priority verification.
+- Schedule monitoring.
+- Manual reassignment.
+- Emergency recovery.
+
+## 8.2 Scalability Testing
+
+Generate simulated datasets:
+
+| Test | Jobs | Technicians |
+|---|---:|---:|
+| Small | 100 | 20 |
+| Medium | 500 | 100 |
+| Large | 1,000 | 200 |
+| Stress | 5,000 | 500 |
+
+Measure:
+
+- Assignment coverage.
+- Total travel time.
+- SLA violations.
+- Unassigned high-priority jobs.
+- Workload imbalance.
+- Overtime.
+- Scheduling execution time.
+- Recovery execution time.
+- Constraint violations.
+
+Do not claim performance figures without actual tests.
+
+## 8.3 Backend Scalability
+
+Prepare for:
+
+- Stateless backend services.
+- Multiple backend instances.
+- Load balancing.
+- Modular services.
+- Request validation.
+- Rate limiting.
+
+## 8.4 Database Scalability
+
+Implement:
+
+- Appropriate database indexes.
+- Pagination.
+- Connection pooling.
+- Query optimization.
+- Efficient transactions.
+
+Consider read replicas and table partitioning when actual data volume justifies them.
+
+## 8.5 Scheduling Engine Scalability
+
+Implement:
+
+- Regional scheduling.
+- Time-limited optimization.
+- Asynchronous processing when needed.
+- Re-optimization of affected schedules only.
+- Travel-time caching.
+- Efficient candidate filtering.
+
+Design for future RabbitMQ or Kafka integration for booking, scheduling, recovery and notifications.
+
+Do not introduce unnecessary infrastructure without a clear performance benefit.
+
+## 8.6 Security
+
+Implement:
+
+- Secure password hashing.
+- JWT authentication.
+- Role-based access.
+- Environment-based secrets.
+- SQL injection protection.
+- Input validation.
+- Rate limiting.
+- Secure file uploads.
+- Restricted personal data access.
+- Audit logging.
+- Proper CORS configuration.
+
+Never commit secrets to GitHub.
+
+## 8.7 Monitoring
+
+Monitor:
+
+- API response times.
+- Backend errors.
+- Database performance.
+- Scheduling execution time.
+- Optimization failures.
+- Unassigned jobs.
+- SLA violations.
+- Recovery success rates.
+
+Provide useful logs for debugging.
+
+## 8.8 Deployment
+
+Prepare deployment for:
+
+Frontend:
+- Vercel or equivalent.
+
+Backend:
+- Railway, Render or equivalent.
+
+Database:
+- Managed MySQL.
+
+Scheduling Engine:
+- Separate Python service.
+
+Maps:
+- OpenStreetMap-based map display and suitable routing infrastructure.
+
+Configure production environment variables, secure database access, migrations, API URLs and deployment instructions.
+
+## 8.9 Final Demonstration Scenarios
+
+Prepare the following demonstrations:
+
+1. Normal AC repair booking.
+2. Customer requesting a preferred technician.
+3. Nearest technician lacking required skills.
+4. Workload balancing across technicians.
+5. Technician becoming unavailable.
+6. Verified emergency arriving.
+7. Technician reporting an unexpected delay.
+8. No eligible technician available.
+9. Multiple concurrent booking requests.
+10. Optimization engine failure and recovery.
+
+**Deliverable:** Tested, secured, deployed DispatchGrid application.
+
+---
+
+# 3. FINAL SYSTEM ARCHITECTURE
+
+The complete system should follow this logical architecture:
+
+CUSTOMER APPLICATION
+TECHNICIAN APPLICATION
+ADMIN / DISPATCHER DASHBOARD
+
+↓
+
+REACT FRONTEND
+
+↓
+
+NODE.JS + EXPRESS BACKEND
+
+↓
+
+AUTHENTICATION & USER MANAGEMENT
+
+↓
+
+SERVICE CATALOGUE & BOOKING MANAGEMENT
+
+↓
+
+INTELLIGENT SCHEDULING ENGINE
+
+- Priority Queue
+- Eligibility Filtering
+- Dijkstra Routing
+- Customer Preference Handling
+- Assignment Scoring
+- Round Robin Fairness
+- OR-Tools CP-SAT
+
+↓
+
+SCHEDULE VALIDATION & DATABASE TRANSACTIONS
+
+↓
+
+MYSQL DATABASE
+
+↓
+
+MONITORING & DISRUPTION DETECTION
+
+↓
+
+DYNAMIC RECOVERY ENGINE
+
+↓
+
+UPDATED SCHEDULES, NOTIFICATIONS & AUDIT HISTORY
+
+The Python scheduling engine should be a separate service integrated with the Node.js backend through documented APIs.
+
+---
+
+# 4. PROJECT-WIDE BUSINESS RULES
+
+These rules apply to every phase:
+
+1. Only approved technicians can receive assignments.
+2. Mandatory skills and certifications must always match.
+3. Customer-requested priority is not automatically verified priority.
+4. Customer preferences should be honoured when feasible.
+5. Round Robin must not override mandatory constraints.
+6. Dijkstra calculates paths on the supplied road network, not the entire schedule.
+7. OR-Tools must respect hard constraints.
+8. Completed assignments must never be reassigned.
+9. Ongoing work must be protected during recovery.
+10. All schedule modifications must be validated before saving.
+11. Failed optimization must not destroy the previous valid schedule.
+12. Customers must only access their own records.
+13. Technicians must only access permitted assignments and information.
+14. Only authorized administrators can perform administrative actions.
+15. Every important scheduling decision must be recorded and explainable.
+
+---
+
+# 5. FINAL DEVELOPMENT REQUIREMENTS
+
+Build the entire project with:
+
+- Clean and modular code.
+- Reusable frontend components.
+- Proper backend architecture.
+- Normalized database design.
+- Documented APIs.
+- Secure authentication.
+- Error handling.
+- Input validation.
+- Database transactions.
+- Audit logging.
+- Automated tests where practical.
+- Deployment documentation.
+
+Do not use hardcoded mock data for core application functionality.
+
+Use realistic seeded demo data only where required for testing and demonstrations.
+
+Do not generate fake assignment results or claim that a feature works when it is only a placeholder.
+
+If an external API, map service, email service or infrastructure dependency is unavailable, provide a clearly documented fallback and explain the limitation.
+
+# 6. FINAL ACCEPTANCE CRITERIA
+
+The project is complete only when:
+
+1. Customers can register and book services.
+2. Technicians can register and get verified.
+3. Admins can manage the platform.
+4. Jobs can be automatically assigned to suitable technicians.
+5. Location and travel time influence assignment.
+6. Schedules can be optimized using OR-Tools.
+7. Customers can track appointments.
+8. Technicians can update job progress.
+9. Emergency requests can be verified and prioritized.
+10. Technician unavailability can trigger recovery.
+11. Unexpected delays can trigger rescheduling.
+12. Invalid assignments are prevented.
+13. Decisions are explainable and auditable.
+14. The application has been tested and deployed.
+
+# FINAL INSTRUCTION
+
+Implement all eight phases as one integrated DispatchGrid application.
+
+Start by inspecting the existing project and identifying which Phase 1 and Phase 2 features are already implemented.
+
+Preserve completed work.
+
+Continue through Phases 3, 4, 5, 6, 7 and 8 in order.
+
+Do not stop after generating a development plan. Write the actual code, implement the database changes, integrate the frontend and backend, run tests and fix errors.
+
+Maintain a development checklist and report progress after every phase.
+
+If a phase cannot be completed because of missing credentials, external dependencies or technical limitations, explain exactly what is incomplete and continue with the remaining independent tasks.
+
+At the end, provide:
+- Complete project folder structure.
+- Database schema and migrations.
+- API documentation.
+- Implemented algorithms.
+- Testing results.
+- Performance measurements.
+- Known limitations.
+- Local setup instructions.
+- Deployment instructions.
+- Final demonstration guide.
+
+The final goal is to deliver DispatchGrid as a complete, functional and extensible intelligent service-booking, technician scheduling and dynamic recovery platform.

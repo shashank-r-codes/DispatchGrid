@@ -1,0 +1,6 @@
+{
+  "name": "DispatchGrid - Intelligent Workforce Scheduling & Recovery Platform",
+  "description": "Enterprise-grade intelligent service-booking, technician matching, Dijkstra route scheduling, OR-Tools constraint optimization, and dynamic recovery platform for Electrical, AC, and Plumbing services.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
