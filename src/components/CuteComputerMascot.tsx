@@ -221,3 +221,4 @@ export const CuteComputerMascot: React.FC<CuteComputerMascotProps> = ({
     </div>
   );
 };
+
