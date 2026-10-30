@@ -32,6 +32,7 @@ import {
   XCircle,
   ChevronRight,
   ArrowRight,
+  ArrowLeft,
   Info,
 } from "lucide-react";
 import { Booking, Technician, ServiceItem, AssignmentRecord, RecoveryAuditLog, JobOffer } from "../types";
@@ -40,13 +41,18 @@ import { ScheduleTimeline } from "../components/ScheduleTimeline";
 import { AssignmentExplanationModal } from "../components/AssignmentExplanationModal";
 import { DisruptionRecoveryModal } from "../components/DisruptionRecoveryModal";
 import { BenchmarkModal } from "../components/BenchmarkModal";
-import { DocumentationPage } from "./DocumentationPage";
 import { useToast } from "../context/ToastContext";
 
-export const AdminDashboard: React.FC = () => {
+interface AdminDashboardProps {
+  onBack?: () => void;
+  activeSubTab?: string;
+  onSubTabChange?: (tab: string) => void;
+}
+
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, activeSubTab, onSubTabChange }) => {
   const { showToast } = useToast();
   
-  // 11 Admin Navigation Tabs
+  // 10 Admin Navigation Tabs (Part 1.A & Part 5)
   const [activeTab, setActiveTab] = useState<
     | "overview"
     | "bookings"
@@ -58,8 +64,14 @@ export const AdminDashboard: React.FC = () => {
     | "simulator"
     | "recovery"
     | "benchmark"
-    | "docs"
   >("overview");
+
+  // Sync activeTab with Navbar selection
+  useEffect(() => {
+    if (activeSubTab) {
+      setActiveTab(activeSubTab as any);
+    }
+  }, [activeSubTab]);
 
   // Core Data
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -77,6 +89,7 @@ export const AdminDashboard: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [priorityFilter, setPriorityFilter] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("" );
+  const [expandedOfferBookingId, setExpandedOfferBookingId] = useState<string | null>(null);
 
   // Modals
   const [isDisruptionModalOpen, setIsDisruptionModalOpen] = useState<boolean>(false);
@@ -425,9 +438,19 @@ export const AdminDashboard: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Top Banner */}
+      {/* Top Banner with Back Button */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900 text-white p-6 rounded-2xl border border-slate-800 shadow-md">
         <div>
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-bold transition border border-slate-700 shadow-sm cursor-pointer mb-2"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 text-blue-400" />
+              <span>Back</span>
+            </button>
+          )}
           <div className="flex items-center gap-2 mb-1">
             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase tracking-wider">
               Admin & Dispatcher Command Center
@@ -560,7 +583,7 @@ export const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* 11 Navigation Views (Part 1.A) */}
+      {/* 10 Navigation Views (Part 1.A & Part 5) */}
       <div className="flex border-b border-slate-200 text-xs font-bold gap-3 overflow-x-auto pb-1">
         {[
           { id: "overview", label: "1. Overview Dashboard" },
@@ -573,7 +596,6 @@ export const AdminDashboard: React.FC = () => {
           { id: "simulator", label: "8. Disruption Simulator" },
           { id: "recovery", label: `9. Recovery Audit Logs (${recoveryLogs.length})` },
           { id: "benchmark", label: "10. Benchmark Runner" },
-          { id: "docs", label: "11. Documentation & Architecture" },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -797,6 +819,7 @@ export const AdminDashboard: React.FC = () => {
                     <th className="py-3 px-4">Customer & Location</th>
                     <th className="py-3 px-4">Priority Triage</th>
                     <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Offers & Reallocation</th>
                     <th className="py-3 px-4">Assigned Technician</th>
                     <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
@@ -807,129 +830,230 @@ export const AdminDashboard: React.FC = () => {
                     const isUnassigned = !b.assignedTechnicianId;
 
                     return (
-                      <tr key={b.bookingId} className="hover:bg-slate-50/70 transition">
-                        <td className="py-3 px-4 font-mono font-bold text-slate-900">
-                          {b.bookingReference}
-                          <div className="text-[10px] text-slate-400 font-normal">
-                            {b.preferredDate} ({b.preferredStartTime} - {b.preferredEndTime})
-                          </div>
-                        </td>
+                      <React.Fragment key={b.bookingId}>
+                        <tr className="hover:bg-slate-50/70 transition">
+                          <td className="py-3 px-4 font-mono font-bold text-slate-900">
+                            {b.bookingReference}
+                            <div className="text-[10px] text-slate-400 font-normal">
+                              {b.preferredDate} ({b.preferredStartTime} - {b.preferredEndTime})
+                            </div>
+                          </td>
 
-                        <td className="py-3 px-4">
-                          <div className="font-semibold text-slate-900">{b.serviceName}</div>
-                          <span
-                            className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
-                              b.category === "AC"
-                                ? "bg-cyan-100 text-cyan-800"
-                                : b.category === "Plumbing"
-                                ? "bg-amber-100 text-amber-800"
-                                : "bg-blue-100 text-blue-800"
-                            }`}
-                          >
-                            {b.category}
-                          </span>
-                        </td>
+                          <td className="py-3 px-4">
+                            <div className="font-semibold text-slate-900">{b.serviceName}</div>
+                            <span
+                              className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                                b.category === "AC"
+                                  ? "bg-cyan-100 text-cyan-800"
+                                  : b.category === "Plumbing"
+                                  ? "bg-amber-100 text-amber-800"
+                                  : "bg-blue-100 text-blue-800"
+                              }`}
+                            >
+                              {b.category}
+                            </span>
+                          </td>
 
-                        <td className="py-3 px-4">
-                          <div className="font-medium text-slate-900">{b.customerName || "Customer"}</div>
-                          <div className="text-[10px] text-slate-400 font-mono">{b.customerPhone || "Unlisted"}</div>
-                          <div className="text-[11px] text-slate-500 truncate max-w-[200px]">{b.serviceAddress}</div>
-                        </td>
+                          <td className="py-3 px-4">
+                            <div className="font-medium text-slate-900">{b.customerName || "Customer"}</div>
+                            <div className="text-[10px] text-slate-400 font-mono">{b.customerPhone || "Unlisted"}</div>
+                            <div className="text-[11px] text-slate-500 truncate max-w-[200px]">{b.serviceAddress}</div>
+                          </td>
 
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-1.5">
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  isEmergency
+                                    ? "bg-red-100 text-red-800 animate-pulse"
+                                    : b.verifiedPriority === "HIGH"
+                                    ? "bg-amber-100 text-amber-800"
+                                    : "bg-slate-100 text-slate-700"
+                                }`}
+                              >
+                                {b.verifiedPriority}
+                              </span>
+                            </div>
+                            {b.requestedPriority === "EMERGENCY" && b.verifiedPriority !== "EMERGENCY" && (
+                              <button
+                                onClick={() => handleVerifyPriority(b.bookingId, "EMERGENCY")}
+                                className="text-[10px] font-bold text-red-600 hover:underline block mt-0.5"
+                              >
+                                Verify Emergency
+                              </button>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-4">
                             <span
                               className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                isEmergency
-                                  ? "bg-red-100 text-red-800 animate-pulse"
-                                  : b.verifiedPriority === "HIGH"
-                                  ? "bg-amber-100 text-amber-800"
+                                b.bookingStatus === "COMPLETED"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : b.bookingStatus === "IN_PROGRESS"
+                                  ? "bg-amber-100 text-amber-800 animate-pulse"
+                                  : b.bookingStatus === "ASSIGNED"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : b.bookingStatus === "OFFERED"
+                                  ? "bg-cyan-100 text-cyan-800"
+                                  : b.bookingStatus === "UNASSIGNED"
+                                  ? "bg-rose-100 text-rose-800"
                                   : "bg-slate-100 text-slate-700"
                               }`}
                             >
-                              {b.verifiedPriority}
+                              {b.bookingStatus}
                             </span>
-                          </div>
-                          {b.requestedPriority === "EMERGENCY" && b.verifiedPriority !== "EMERGENCY" && (
+                          </td>
+
+                          <td className="py-3 px-4">
                             <button
-                              onClick={() => handleVerifyPriority(b.bookingId, "EMERGENCY")}
-                              className="text-[10px] font-bold text-red-600 hover:underline block mt-0.5"
+                              type="button"
+                              onClick={() => setExpandedOfferBookingId(expandedOfferBookingId === b.bookingId ? null : b.bookingId)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-100 font-semibold text-slate-700 cursor-pointer text-[10px]"
                             >
-                              Verify Emergency
-                            </button>
-                          )}
-                        </td>
-
-                        <td className="py-3 px-4">
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              b.bookingStatus === "COMPLETED"
-                                ? "bg-emerald-100 text-emerald-800"
-                                : b.bookingStatus === "IN_PROGRESS"
-                                ? "bg-amber-100 text-amber-800 animate-pulse"
-                                : b.bookingStatus === "ASSIGNED"
-                                ? "bg-blue-100 text-blue-800"
-                                : b.bookingStatus === "OFFERED"
-                                ? "bg-cyan-100 text-cyan-800"
-                                : b.bookingStatus === "UNASSIGNED"
-                                ? "bg-rose-100 text-rose-800"
-                                : "bg-slate-100 text-slate-700"
-                            }`}
-                          >
-                            {b.bookingStatus}
-                          </span>
-                        </td>
-
-                        <td className="py-3 px-4">
-                          {b.assignedTechnicianName ? (
-                            <div>
-                              <div className="font-bold text-slate-900">{b.assignedTechnicianName}</div>
-                              <div className="text-[10px] text-emerald-700 font-semibold">
-                                Dijkstra Travel: {b.estimatedTravelTimeMinutes || 15} mins
-                              </div>
-                            </div>
-                          ) : (
-                            <div>
-                              <span className="text-amber-600 italic">Unassigned</span>
-                              {b.unassignedReason && (
-                                <div className="text-[10px] text-rose-600 truncate max-w-[180px]" title={b.unassignedReason}>
-                                  {b.unassignedReason}
-                                </div>
+                              <span>{(b as any).offerCount || (b as any).offers?.length || 1} Contacted</span>
+                              {(b as any).rejectedOfferCount > 0 && (
+                                <span className="px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-700 text-[10px] font-bold">
+                                  {(b as any).rejectedOfferCount} Rejected
+                                </span>
                               )}
-                            </div>
-                          )}
-                        </td>
-
-                        <td className="py-3 px-4 text-right space-x-2">
-                          {isUnassigned && b.bookingStatus !== "CANCELLED" && (
-                            <button
-                              onClick={() => handleAutoAssignJob(b.bookingId)}
-                              className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded font-bold text-[11px] shadow-2xs"
-                            >
-                              Auto-Assign
+                              <ChevronRight className={`w-3 h-3 transition-transform ${expandedOfferBookingId === b.bookingId ? "rotate-90" : ""}`} />
                             </button>
-                          )}
+                            {(b as any).currentContactedTechnician && (
+                              <div className="text-[10px] text-slate-500 mt-1">
+                                Current: <strong className="text-slate-800">{(b as any).currentContactedTechnician}</strong>
+                              </div>
+                            )}
+                          </td>
 
-                          <button
-                            onClick={() => {
-                              setSelectedBooking(b);
-                              setActiveTab("map");
-                            }}
-                            title="View on Map"
-                            className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[11px] font-semibold"
-                          >
-                            Map
-                          </button>
+                          <td className="py-3 px-4">
+                            {b.assignedTechnicianName ? (
+                              <div>
+                                <div className="font-bold text-slate-900">{b.assignedTechnicianName}</div>
+                                <div className="text-[10px] text-emerald-700 font-semibold">
+                                  Dijkstra Travel: {b.estimatedTravelTimeMinutes || 15} mins
+                                </div>
+                              </div>
+                            ) : (
+                              <div>
+                                <span className="text-amber-600 italic">Unassigned</span>
+                                {b.unassignedReason && (
+                                  <div className="text-[10px] text-rose-600 truncate max-w-[180px]" title={b.unassignedReason}>
+                                    {b.unassignedReason}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </td>
 
-                          <button
-                            onClick={() => handleViewExplainability(b.bookingId)}
-                            title="View candidate scoring & explanation"
-                            className="px-2 py-1 border border-slate-200 hover:bg-slate-100 rounded text-[11px] font-semibold text-slate-700"
-                          >
-                            Explain
-                          </button>
-                        </td>
-                      </tr>
+                          <td className="py-3 px-4 text-right space-x-2">
+                            {isUnassigned && b.bookingStatus !== "CANCELLED" && (
+                              <button
+                                onClick={() => handleAutoAssignJob(b.bookingId)}
+                                className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded font-bold text-[11px] shadow-2xs cursor-pointer"
+                              >
+                                Auto-Assign
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => {
+                                setSelectedBooking(b);
+                                setActiveTab("map");
+                              }}
+                              title="View on Map"
+                              className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[11px] font-semibold cursor-pointer"
+                            >
+                              Map
+                            </button>
+
+                            <button
+                              onClick={() => handleViewExplainability(b.bookingId)}
+                              title="View candidate scoring & explanation"
+                              className="px-2 py-1 border border-slate-200 hover:bg-slate-100 rounded text-[11px] font-semibold text-slate-700 cursor-pointer"
+                            >
+                              Explain
+                            </button>
+                          </td>
+                        </tr>
+
+                        {/* Expandable Technician Offer History Table (Section 7 Requirement) */}
+                        {expandedOfferBookingId === b.bookingId && (
+                          <tr className="bg-slate-50/80">
+                            <td colSpan={8} className="p-4 border-t border-b border-slate-200">
+                              <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-3 shadow-xs">
+                                <div className="flex items-center justify-between text-xs">
+                                  <span className="font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                                    <Clock className="w-3.5 h-3.5 text-blue-600" />
+                                    Technician Offer History for {b.bookingReference}
+                                  </span>
+                                  <span className="text-[11px] text-slate-500">
+                                    Total Contacted Technicians: {(b as any).offers?.length || 1}
+                                  </span>
+                                </div>
+
+                                {(b as any).offers && (b as any).offers.length > 0 ? (
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-xs">
+                                      <thead className="bg-slate-100/70 text-slate-600 font-bold border-b border-slate-200">
+                                        <tr>
+                                          <th className="py-2 px-3">Attempt</th>
+                                          <th className="py-2 px-3">Technician</th>
+                                          <th className="py-2 px-3">Road Distance</th>
+                                          <th className="py-2 px-3">Dijkstra Travel</th>
+                                          <th className="py-2 px-3">Offer Status</th>
+                                          <th className="py-2 px-3">Rejection / Response Reason</th>
+                                          <th className="py-2 px-3">Offered At</th>
+                                          <th className="py-2 px-3">Responded At</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-slate-100 text-[11px]">
+                                        {(b as any).offers.map((off: any, idx: number) => (
+                                          <tr key={off.offerId || idx} className="hover:bg-slate-50">
+                                            <td className="py-2 px-3 font-mono font-bold">#{off.attemptNumber || idx + 1}</td>
+                                            <td className="py-2 px-3 font-semibold text-slate-900">{off.technicianName}</td>
+                                            <td className="py-2 px-3">{off.distanceKm} km</td>
+                                            <td className="py-2 px-3">{off.travelMinutes} mins</td>
+                                            <td className="py-2 px-3">
+                                              <span
+                                                className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                                  off.offerStatus === "ACCEPTED"
+                                                    ? "bg-emerald-100 text-emerald-800"
+                                                    : off.offerStatus === "REJECTED"
+                                                    ? "bg-rose-100 text-rose-800"
+                                                    : off.offerStatus === "EXPIRED"
+                                                    ? "bg-amber-100 text-amber-800"
+                                                    : off.offerStatus === "WITHDRAWN"
+                                                    ? "bg-slate-100 text-slate-600"
+                                                    : "bg-blue-100 text-blue-800 animate-pulse"
+                                                }`}
+                                              >
+                                                {off.offerStatus}
+                                              </span>
+                                            </td>
+                                            <td className="py-2 px-3 text-slate-600 italic">
+                                              {off.rejectionReason || (off.offerStatus === "ACCEPTED" ? "Confirmed by specialist" : "Pending technician response")}
+                                            </td>
+                                            <td className="py-2 px-3 text-slate-400 font-mono">
+                                              {off.offeredAt ? new Date(off.offeredAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "-"}
+                                            </td>
+                                            <td className="py-2 px-3 text-slate-400 font-mono">
+                                              {off.respondedAt ? new Date(off.respondedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "-"}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                ) : (
+                                  <div className="py-3 text-center text-xs text-slate-400">
+                                    Initial dispatch offered to {b.assignedTechnicianName || "Specialist"}.
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     );
                   })}
                 </tbody>
@@ -1615,12 +1739,7 @@ export const AdminDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 11: DOCUMENTATION AND ARCHITECTURE */}
-      {activeTab === "docs" && (
-        <div>
-          <DocumentationPage />
-        </div>
-      )}
+
 
       {/* MANUAL ASSIGNMENT MODAL */}
       {manualAssignBookingId && (

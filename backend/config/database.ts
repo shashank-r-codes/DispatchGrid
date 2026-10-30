@@ -24,6 +24,7 @@ export function initDatabase(autoSeed = true) {
       password_hash TEXT NOT NULL,
       role TEXT NOT NULL CHECK(role IN ('CUSTOMER', 'TECHNICIAN', 'ADMIN')),
       account_status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(account_status IN ('PENDING', 'ACTIVE', 'SUSPENDED', 'REJECTED')),
+      profile_picture_url TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
@@ -72,6 +73,7 @@ export function initDatabase(autoSeed = true) {
       reserved_emergency_capacity TEXT DEFAULT '11:00-11:30',
       total_completed_jobs INTEGER NOT NULL DEFAULT 0,
       average_rating REAL NOT NULL DEFAULT 5.0,
+      profile_picture_url TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
@@ -178,6 +180,8 @@ export function initDatabase(autoSeed = true) {
       travel_minutes INTEGER DEFAULT 0,
       distance_km REAL DEFAULT 0.0,
       score REAL DEFAULT 0.0,
+      attempt_number INTEGER DEFAULT 1,
+      scheduling_run_id TEXT,
       FOREIGN KEY (booking_id) REFERENCES bookings(booking_id) ON DELETE CASCADE,
       FOREIGN KEY (technician_id) REFERENCES users(user_id) ON DELETE CASCADE
     );
@@ -259,12 +263,17 @@ export function initDatabase(autoSeed = true) {
   // Safe migrations for preexisting databases
   try { db.exec("ALTER TABLE users ADD COLUMN username TEXT;"); } catch {}
   try { db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username);"); } catch {}
+  try { db.exec("ALTER TABLE users ADD COLUMN profile_picture_url TEXT;"); } catch {}
+  try { db.exec("ALTER TABLE technician_profiles ADD COLUMN profile_picture_url TEXT;"); } catch {}
+  try { db.exec("ALTER TABLE customer_profiles ADD COLUMN profile_picture_url TEXT;"); } catch {}
   try { db.exec("ALTER TABLE bookings ADD COLUMN customer_name TEXT;"); } catch {}
   try { db.exec("ALTER TABLE bookings ADD COLUMN customer_phone TEXT;"); } catch {}
   try { db.exec("ALTER TABLE bookings ADD COLUMN notes TEXT;"); } catch {}
   try { db.exec("ALTER TABLE bookings ADD COLUMN unassigned_reason TEXT;"); } catch {}
   try { db.exec("CREATE INDEX IF NOT EXISTS idx_job_offers_tech ON job_offers(technician_id, status);"); } catch {}
   try { db.exec("CREATE INDEX IF NOT EXISTS idx_job_offers_booking ON job_offers(booking_id, status);"); } catch {}
+  try { db.exec("ALTER TABLE job_offers ADD COLUMN attempt_number INTEGER DEFAULT 1;"); } catch {}
+  try { db.exec("ALTER TABLE job_offers ADD COLUMN scheduling_run_id TEXT;"); } catch {}
 
   // Check if initial full seed is needed
   if (autoSeed) {
@@ -362,12 +371,28 @@ export function resetAndSeedDatabase(force = false) {
     insertService.run("SRV_P_04", "Water Pump Repair & Pressure Tank", "Plumbing", "Fix dry-run burnouts, pressure sensor calibration, and automatic float switches", 90, 89.0, JSON.stringify(["Water pump repair"]), JSON.stringify(["Licensed Master Plumber (LMP)"]));
     insertService.run("SRV_P_05", "Fresh Pipeline Layout Installation", "Plumbing", "CPVC water supply loop installation for bathrooms and kitchens", 120, 149.0, JSON.stringify(["Pipeline installation"]), JSON.stringify(["Licensed Master Plumber (LMP)"]));
 
-    // 4. Admin User
+    // 4. Admin and Customer Seed Users
     const adminHash = bcrypt.hashSync("admin123", 10);
     db.prepare(`
       INSERT OR REPLACE INTO users (user_id, username, full_name, email, phone, password_hash, role, account_status)
       VALUES (?, ?, ?, ?, ?, ?, 'ADMIN', 'ACTIVE')
-    `).run("USR_ADMIN_01", "admin", "Alex Mercer (Chief Dispatcher)", "admin@dispatchgrid.io", "+91-98000-00001", adminHash);
+    `).run("USR_ADMIN_01", "admin", "Alex Mercer (Chief Dispatcher)", "admin@dispatchgrid.demo", "+91-98000-00001", adminHash);
+
+    const customerHash = bcrypt.hashSync("12345", 10);
+    db.prepare(`
+      INSERT OR REPLACE INTO users (user_id, username, full_name, email, phone, password_hash, role, account_status)
+      VALUES (?, ?, ?, ?, ?, ?, 'CUSTOMER', 'ACTIVE')
+    `).run("USR_CUST_DEMO", "customer", "David Miller (Valued Customer)", "customer@dispatchgrid.demo", "+91-98800-00001", customerHash);
+
+    db.prepare(`
+      INSERT OR REPLACE INTO customer_profiles (customer_id, user_id)
+      VALUES (?, ?)
+    `).run("CP_DEMO_01", "USR_CUST_DEMO");
+
+    db.prepare(`
+      INSERT OR REPLACE INTO customer_addresses (address_id, customer_id, label, address_line, city, state, pincode, latitude, longitude, is_default)
+      VALUES (?, ?, 'Primary Residence', ?, ?, ?, ?, ?, ?, 1)
+    `).run("ADDR_DEMO_01", "USR_CUST_DEMO", "100 Indiranagar 12th Main", "Bengaluru", "Karnataka", "560038", 12.9784, 77.6408);
 
     // 5. Seed Exactly 20 Technicians (username: electrician1 .. electrician20, password: 12345)
     const techPasswordHash = bcrypt.hashSync("12345", 10);
@@ -477,18 +502,24 @@ export function resetAndSeedDatabase(force = false) {
       techUserMap.set(`electrician${i}`, `USR_TECH_${String(i).padStart(2, "0")}`);
     }
 
-    seedJobs.forEach((j) => {
+    seedJobs.forEach((j, idx) => {
       const assignedTechId = j.assignedTechUsername ? techUserMap.get(j.assignedTechUsername) || null : null;
       const isScheduledOrActive = ["ASSIGNED", "IN_PROGRESS", "COMPLETED"].includes(j.bookingStatus);
       const confStart = isScheduledOrActive ? `${j.preferredDate}T${j.preferredStartTime}:00Z` : null;
       const confEnd = isScheduledOrActive ? `${j.preferredDate}T${j.preferredEndTime}:00Z` : null;
 
+      // Assign a rich variety of 7 bookings to the demo customer account
+      const isDemoCustomerJob = [0, 6, 12, 19, 27, 34, 45].includes(idx);
+      const custId = isDemoCustomerJob ? "USR_CUST_DEMO" : null;
+      const cName = isDemoCustomerJob ? "David Miller (Valued Customer)" : j.customerName;
+      const cPhone = isDemoCustomerJob ? "+91-98800-00001" : j.customerPhone;
+
       insertBookingStmt.run(
         j.bookingId,
         j.bookingReference,
-        null, // guest or customer
-        j.customerName,
-        j.customerPhone,
+        custId,
+        cName,
+        cPhone,
         j.notes || null,
         j.unassignedReason || null,
         j.serviceId,
@@ -524,7 +555,7 @@ export function resetAndSeedDatabase(force = false) {
         insertReviewStmt.run(
           `REV_${j.bookingId}`,
           j.bookingId,
-          null,
+          isDemoCustomerJob ? "USR_CUST_DEMO" : null,
           assignedTechId,
           j.customerReview.rating,
           j.customerReview.comment,
@@ -532,6 +563,17 @@ export function resetAndSeedDatabase(force = false) {
         );
       }
     });
+
+    // 7. Seed Initial Notifications
+    const insertNotifStmt = db.prepare(`
+      INSERT OR REPLACE INTO notifications (notification_id, recipient_user_id, title, message, type, reference_id, is_read)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertNotifStmt.run("NOTIF_01", "USR_CUST_DEMO", "Booking Confirmed", "Your service booking DG-2026-101 has been assigned to Rajesh Kumar.", "BOOKING_UPDATE", "DG-2026-101", 0);
+    insertNotifStmt.run("NOTIF_02", "USR_CUST_DEMO", "Technician Dispatched", "Technician is on the way for booking DG-2026-107. Estimated arrival in 18 minutes.", "DISPATCH", "DG-2026-107", 0);
+    insertNotifStmt.run("NOTIF_03", "USR_TECH_01", "New Job Offer Dispatched", "New high-priority wiring repair offer assigned in CBD / Central zone.", "JOB_OFFER", "BOOK_ELEC_01", 0);
+    insertNotifStmt.run("NOTIF_04", "USR_ADMIN_01", "Disruption Auto-Recovered", "Technician reported delay handled smoothly via Dijkstra re-optimization.", "RECOVERY", "REC_AUTO_01", 1);
 
     console.log(`[DispatchGrid] Seed complete: 20 Technicians & ${seedJobs.length} Service Jobs successfully populated.`);
   });

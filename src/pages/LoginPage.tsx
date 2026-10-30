@@ -1,163 +1,315 @@
 import React, { useState } from "react";
-import { Grid, Shield, User, Wrench, Lock, Mail, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Grid, Shield, User, Wrench, Lock, Mail, ArrowRight, AlertCircle, Sparkles, ChevronDown } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
+export type RoleChoice = "CUSTOMER" | "ADMIN" | "TECHNICIAN";
+
 interface LoginPageProps {
-  onNavigateRegisterCustomer: () => void;
-  onNavigateRegisterTechnician: () => void;
-  onLoginSuccess: () => void;
+  onLoginSuccess: (role: RoleChoice) => void;
+  onContinueAsGuest?: () => void;
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({
-  onNavigateRegisterCustomer,
-  onNavigateRegisterTechnician,
   onLoginSuccess,
+  onContinueAsGuest,
 }) => {
-  const { login, switchRoleQuick, isLoading } = useAuth();
-  const [email, setEmail] = useState<string>("admin@dispatchgrid.io");
+  const { login, isLoading } = useAuth();
+  const [selectedRole, setSelectedRole] = useState<RoleChoice>("ADMIN");
+  const [email, setEmail] = useState<string>("admin@dispatchgrid.demo");
   const [password, setPassword] = useState<string>("admin123");
+  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [showTechPicker, setShowTechPicker] = useState<boolean>(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const ok = await login(email, password);
-    if (ok) {
-      onLoginSuccess();
+  // Pre-fill appropriate default demo credentials when switching role tab
+  const handleRoleChange = (newRole: RoleChoice) => {
+    setSelectedRole(newRole);
+    setErrorMessage("");
+    if (newRole === "ADMIN") {
+      setEmail("admin@dispatchgrid.demo");
+      setPassword("admin123");
+    } else if (newRole === "CUSTOMER") {
+      setEmail("customer@dispatchgrid.demo");
+      setPassword("12345");
+    } else if (newRole === "TECHNICIAN") {
+      setEmail("electrician1@dispatchgrid.demo");
+      setPassword("12345");
     }
   };
 
-  const handleQuickDemo = async (role: "ADMIN" | "CUSTOMER" | "TECH_AC" | "TECH_ELEC") => {
-    await switchRoleQuick(role);
-    onLoginSuccess();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage("");
+    setIsSubmitting(true);
+
+    try {
+      const result = await login(email.trim(), password, selectedRole);
+      if (result.success) {
+        onLoginSuccess(selectedRole);
+      } else {
+        setErrorMessage(result.error || "Login failed. Please check your credentials.");
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || "An unexpected error occurred during login.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  // Demo technician roster (all 20)
+  const DEMO_TECHNICIANS = [
+    { id: 1, email: "electrician1@dispatchgrid.demo", name: "Rajesh Kumar", category: "Electrical" },
+    { id: 2, email: "electrician2@dispatchgrid.demo", name: "Amit Patel", category: "AC" },
+    { id: 3, email: "electrician3@dispatchgrid.demo", name: "Suresh Reddy", category: "Plumbing" },
+    { id: 4, email: "electrician4@dispatchgrid.demo", name: "Vikram Rao", category: "Electrical & AC" },
+    { id: 5, email: "electrician5@dispatchgrid.demo", name: "Priya Sharma", category: "Electrical" },
+    { id: 6, email: "electrician6@dispatchgrid.demo", name: "Karan Malhotra", category: "AC" },
+    { id: 7, email: "electrician7@dispatchgrid.demo", name: "Manoj Swaminathan", category: "Plumbing" },
+    { id: 8, email: "electrician8@dispatchgrid.demo", name: "Deepak Joshi", category: "Electrical" },
+    { id: 9, email: "electrician9@dispatchgrid.demo", name: "Sunil Grover", category: "AC" },
+    { id: 10, email: "electrician10@dispatchgrid.demo", name: "Rohan Kulkarni", category: "Electrical & Plumbing" },
+    { id: 11, email: "electrician11@dispatchgrid.demo", name: "Girish Nair", category: "Plumbing" },
+    { id: 12, email: "electrician12@dispatchgrid.demo", name: "Farhan Siddiqui", category: "AC" },
+    { id: 13, email: "electrician13@dispatchgrid.demo", name: "Naveen Prasad", category: "Electrical" },
+    { id: 14, email: "electrician14@dispatchgrid.demo", name: "Anil Deshmukh", category: "AC" },
+    { id: 15, email: "electrician15@dispatchgrid.demo", name: "Vikas Hegde", category: "Plumbing" },
+    { id: 16, email: "electrician16@dispatchgrid.demo", name: "Prakash Chawla", category: "Electrical & AC" },
+    { id: 17, email: "electrician17@dispatchgrid.demo", name: "Dinesh Bhatt", category: "Electrical" },
+    { id: 18, email: "electrician18@dispatchgrid.demo", name: "Sanjay Singhal", category: "AC" },
+    { id: 19, email: "electrician19@dispatchgrid.demo", name: "Harish Chandra", category: "Plumbing" },
+    { id: 20, email: "electrician20@dispatchgrid.demo", name: "Raghav Menon", category: "All (Electrical, AC, Plumbing)" },
+  ];
 
   return (
     <div className="min-h-[85vh] flex items-center justify-center p-4">
       <div className="max-w-md w-full space-y-6">
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex w-12 h-12 rounded-2xl bg-blue-600 text-white items-center justify-center shadow-lg shadow-blue-500/20">
-            <Grid className="w-6 h-6" />
+          <div className="inline-flex w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-700 via-blue-600 to-indigo-700 text-white items-center justify-center shadow-xl shadow-blue-600/20">
+            <Grid className="w-7 h-7" />
           </div>
-          <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            Sign in to DispatchGrid
-          </h2>
-          <p className="text-xs text-slate-500">
-            Intelligent Workforce Scheduling & Dynamic Recovery Platform
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+            DISPATCH<span className="text-blue-600">GRID</span>
+          </h1>
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            Intelligent Workforce Scheduling & Recovery
           </p>
         </div>
 
-        {/* Demo Fast Login Cards */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-2.5">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            1-Click Demo Personas
-          </div>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <button
-              type="button"
-              onClick={() => handleQuickDemo("ADMIN")}
-              className="p-2.5 rounded-xl border border-purple-200 bg-purple-50/70 hover:bg-purple-100/70 text-purple-950 font-semibold text-left transition flex items-center justify-between"
-            >
-              <div>
-                <div className="font-bold">Admin Dispatcher</div>
-                <div className="text-[10px] text-purple-700">Alex Mercer</div>
-              </div>
-              <Shield className="w-4 h-4 text-purple-600" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleQuickDemo("CUSTOMER")}
-              className="p-2.5 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100/70 text-blue-950 font-semibold text-left transition flex items-center justify-between"
-            >
-              <div>
-                <div className="font-bold">Customer</div>
-                <div className="text-[10px] text-blue-700">David Miller</div>
-              </div>
-              <User className="w-4 h-4 text-blue-600" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleQuickDemo("TECH_AC")}
-              className="p-2.5 rounded-xl border border-cyan-200 bg-cyan-50/70 hover:bg-cyan-100/70 text-cyan-950 font-semibold text-left transition flex items-center justify-between"
-            >
-              <div>
-                <div className="font-bold">Amit (AC Tech)</div>
-                <div className="text-[10px] text-cyan-700">Certified HVAC</div>
-              </div>
-              <Wrench className="w-4 h-4 text-cyan-600" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleQuickDemo("TECH_ELEC")}
-              className="p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100/70 text-emerald-950 font-semibold text-left transition flex items-center justify-between"
-            >
-              <div>
-                <div className="font-bold">Rajesh (Electrician)</div>
-                <div className="text-[10px] text-emerald-700">Master Wireman</div>
-              </div>
-              <Wrench className="w-4 h-4 text-emerald-600" />
-            </button>
-          </div>
-        </div>
-
-        {/* Regular Login Form */}
-        <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+        {/* Common Login Card */}
+        <div className="bg-white p-6 sm:p-7 rounded-3xl border border-slate-200/90 shadow-xl shadow-slate-200/50 space-y-5">
+          {/* Role Selection (Mandatory Section) */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
-            <div className="relative">
-              <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full text-xs rounded-xl border-slate-200 bg-slate-50 pl-9 p-2.5 focus:bg-white focus:ring-blue-500"
-              />
+            <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide">
+              Select your role:
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => handleRoleChange("CUSTOMER")}
+                className={`py-2.5 px-3 rounded-xl text-xs font-bold transition flex flex-col items-center gap-1 border ${
+                  selectedRole === "CUSTOMER"
+                    ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20"
+                    : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900"
+                }`}
+              >
+                <User className="w-4 h-4" />
+                <span>Customer</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleRoleChange("ADMIN")}
+                className={`py-2.5 px-3 rounded-xl text-xs font-bold transition flex flex-col items-center gap-1 border ${
+                  selectedRole === "ADMIN"
+                    ? "bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-500/20"
+                    : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900"
+                }`}
+              >
+                <Shield className="w-4 h-4" />
+                <span>Admin</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleRoleChange("TECHNICIAN")}
+                className={`py-2.5 px-3 rounded-xl text-xs font-bold transition flex flex-col items-center gap-1 border ${
+                  selectedRole === "TECHNICIAN"
+                    ? "bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-500/20"
+                    : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900"
+                }`}
+              >
+                <Wrench className="w-4 h-4" />
+                <span>Technician</span>
+              </button>
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Password</label>
-            <div className="relative">
-              <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full text-xs rounded-xl border-slate-200 bg-slate-50 pl-9 p-2.5 focus:bg-white focus:ring-blue-500"
-              />
+          {/* Error Banner */}
+          {errorMessage && (
+            <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-start gap-2 animate-fadeIn">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-red-600" />
+              <div className="font-medium leading-relaxed">{errorMessage}</div>
+            </div>
+          )}
+
+          {/* Main Credentials Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={
+                    selectedRole === "ADMIN"
+                      ? "admin@dispatchgrid.demo"
+                      : selectedRole === "CUSTOMER"
+                      ? "customer@dispatchgrid.demo"
+                      : "electrician1@dispatchgrid.demo"
+                  }
+                  required
+                  className="w-full text-xs rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-3 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Password</label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  className="w-full text-xs rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-3 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmitting || isLoading}
+              className={`w-full py-3 rounded-xl text-xs font-extrabold text-white transition flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 cursor-pointer ${
+                selectedRole === "ADMIN"
+                  ? "bg-purple-600 hover:bg-purple-700 shadow-purple-600/20"
+                  : selectedRole === "CUSTOMER"
+                  ? "bg-blue-600 hover:bg-blue-700 shadow-blue-600/20"
+                  : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20"
+              }`}
+            >
+              {isSubmitting ? (
+                "Authenticating..."
+              ) : (
+                <>
+                  <span>Sign In as {selectedRole.charAt(0) + selectedRole.slice(1).toLowerCase()}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* Quick Demo Credentials Assistant */}
+          <div className="pt-2 border-t border-slate-100 space-y-2">
+            <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold uppercase tracking-wider">
+              <span className="flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-amber-500" /> Demo Credentials
+              </span>
+              <span className="font-mono text-[10px] text-slate-500">Auto-Fill</span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-1.5 text-[11px]">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedRole("ADMIN");
+                  setEmail("admin@dispatchgrid.demo");
+                  setPassword("admin123");
+                  setErrorMessage("");
+                }}
+                className="p-1.5 rounded-lg border border-purple-200 bg-purple-50/70 hover:bg-purple-100 text-purple-900 font-semibold text-center transition"
+              >
+                Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedRole("CUSTOMER");
+                  setEmail("customer@dispatchgrid.demo");
+                  setPassword("12345");
+                  setErrorMessage("");
+                }}
+                className="p-1.5 rounded-lg border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-blue-900 font-semibold text-center transition"
+              >
+                Customer
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedRole("TECHNICIAN");
+                  setEmail("electrician1@dispatchgrid.demo");
+                  setPassword("12345");
+                  setErrorMessage("");
+                }}
+                className="p-1.5 rounded-lg border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-900 font-semibold text-center transition"
+              >
+                Tech 1 (Elec)
+              </button>
+            </div>
+
+            {/* Expandable 20 Technicians Picker */}
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowTechPicker(!showTechPicker)}
+                className="w-full py-1.5 text-[11px] text-slate-500 hover:text-slate-700 flex items-center justify-between px-1"
+              >
+                <span>Select any of 20 Technicians...</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showTechPicker ? "rotate-180" : ""}`} />
+              </button>
+
+              {showTechPicker && (
+                <div className="max-h-44 overflow-y-auto mt-1 p-1 bg-slate-50 rounded-xl border border-slate-200 space-y-1 text-[11px]">
+                  {DEMO_TECHNICIANS.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedRole("TECHNICIAN");
+                        setEmail(t.email);
+                        setPassword("12345");
+                        setShowTechPicker(false);
+                        setErrorMessage("");
+                      }}
+                      className="w-full text-left px-2 py-1 rounded hover:bg-white flex items-center justify-between text-slate-700 hover:text-slate-900"
+                    >
+                      <span className="font-semibold">{t.name}</span>
+                      <span className="text-[10px] text-slate-400 font-mono">{t.category}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-md shadow-slate-900/10"
-          >
-            Sign In with JWT Credentials <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </form>
-
-        {/* Registration Links */}
-        <div className="flex items-center justify-between text-xs text-slate-500 px-2">
-          <button
-            type="button"
-            onClick={onNavigateRegisterCustomer}
-            className="hover:text-blue-600 font-semibold"
-          >
-            Register as Customer &rarr;
-          </button>
-          <button
-            type="button"
-            onClick={onNavigateRegisterTechnician}
-            className="hover:text-blue-600 font-semibold"
-          >
-            Join as Technician &rarr;
-          </button>
         </div>
+
+        {/* Guest Booking Option (Part 1.B: Customer books without login) */}
+        {onContinueAsGuest && (
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={onContinueAsGuest}
+              className="text-xs font-bold text-blue-600 hover:text-blue-800 transition inline-flex items-center gap-1 hover:underline cursor-pointer"
+            >
+              <span>Book a Service as Guest (No Login Required)</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

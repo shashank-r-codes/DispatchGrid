@@ -28,7 +28,7 @@ export const SEED_TECHNICIANS: SeedTechnicianDef[] = [
   {
     username: "electrician1",
     fullName: "Rajesh Kumar",
-    email: "rajesh.elec@dispatchgrid.io",
+    email: "electrician1@dispatchgrid.demo",
     phone: "+91-98801-10001",
     experienceYears: 8,
     categories: ["Electrical"],
@@ -49,7 +49,7 @@ export const SEED_TECHNICIANS: SeedTechnicianDef[] = [
   {
     username: "electrician2",
     fullName: "Amit Patel",
-    email: "amit.ac@dispatchgrid.io",
+    email: "electrician2@dispatchgrid.demo",
     phone: "+91-98801-10002",
     experienceYears: 9,
     categories: ["AC"], // Distinct AC specialization
@@ -70,7 +70,7 @@ export const SEED_TECHNICIANS: SeedTechnicianDef[] = [
   {
     username: "electrician3",
     fullName: "Suresh Reddy",
-    email: "suresh.plumb@dispatchgrid.io",
+    email: "electrician3@dispatchgrid.demo",
     phone: "+91-98801-10003",
     experienceYears: 10,
     categories: ["Plumbing"],
@@ -91,7 +91,7 @@ export const SEED_TECHNICIANS: SeedTechnicianDef[] = [
   {
     username: "electrician4",
     fullName: "Vikram Rao",
-    email: "vikram.tech@dispatchgrid.io",
+    email: "electrician4@dispatchgrid.demo",
     phone: "+91-98801-10004",
     experienceYears: 7,
     categories: ["Electrical", "AC"], // Multi-skilled: Electrical & AC
@@ -112,7 +112,7 @@ export const SEED_TECHNICIANS: SeedTechnicianDef[] = [
   {
     username: "electrician5",
     fullName: "Priya Sharma",
-    email: "priya.elec@dispatchgrid.io",
+    email: "electrician5@dispatchgrid.demo",
     phone: "+91-98801-10005",
     experienceYears: 6,
     categories: ["Electrical"],
@@ -133,7 +133,7 @@ export const SEED_TECHNICIANS: SeedTechnicianDef[] = [
   {
     username: "electrician6",
     fullName: "Karan Malhotra",
-    email: "karan.ac@dispatchgrid.io",
+    email: "electrician6@dispatchgrid.demo",
     phone: "+91-98801-10006",
     experienceYears: 6,
     categories: ["AC"], // Distinct AC
@@ -154,7 +154,7 @@ export const SEED_TECHNICIANS: SeedTechnicianDef[] = [
   {
     username: "electrician7",
     fullName: "Manoj Swaminathan",
-    email: "manoj.plumb@dispatchgrid.io",
+    email: "electrician7@dispatchgrid.demo",
     phone: "+91-98801-10007",
     experienceYears: 8,
     categories: ["Plumbing"],
@@ -175,7 +175,7 @@ export const SEED_TECHNICIANS: SeedTechnicianDef[] = [
   {
     username: "electrician8",
     fullName: "Deepak Joshi",
-    email: "deepak.elec@dispatchgrid.io",
+    email: "electrician8@dispatchgrid.demo",
     phone: "+91-98801-10008",
     experienceYears: 9,
     categories: ["Electrical"],
@@ -196,7 +196,7 @@ export const SEED_TECHNICIANS: SeedTechnicianDef[] = [
   {
     username: "electrician9",
     fullName: "Sunil Grover",
-    email: "sunil.ac@dispatchgrid.io",
+    email: "electrician9@dispatchgrid.demo",
     phone: "+91-98801-10009",
     experienceYears: 7,
     categories: ["AC"], // Distinct AC
@@ -217,7 +217,7 @@ export const SEED_TECHNICIANS: SeedTechnicianDef[] = [
   {
     username: "electrician10",
     fullName: "Rohan Kulkarni",
-    email: "rohan.dual@dispatchgrid.io",
+    email: "electrician10@dispatchgrid.demo",
     phone: "+91-98801-10010",
     experienceYears: 8,
     categories: ["Electrical", "Plumbing"], // Multi-skilled: Electrical & Plumbing
@@ -238,7 +238,7 @@ export const SEED_TECHNICIANS: SeedTechnicianDef[] = [
   {
     username: "electrician11",
     fullName: "Girish Nair",
-    email: "girish.plumb@dispatchgrid.io",
+    email: "electrician11@dispatchgrid.demo",
     phone: "+91-98801-10011",
     experienceYears: 11,
     categories: ["Plumbing"],
@@ -259,7 +259,7 @@ export const SEED_TECHNICIANS: SeedTechnicianDef[] = [
   {
     username: "electrician12",
     fullName: "Farhan Siddiqui",
-    email: "farhan.ac@dispatchgrid.io",
+    email: "electrician12@dispatchgrid.demo",
     phone: "+91-98801-10012",
     experienceYears: 5,
     categories: ["AC"], // Distinct AC
@@ -280,7 +280,7 @@ export const SEED_TECHNICIANS: SeedTechnicianDef[] = [
   {
     username: "electrician13",
     fullName: "Naveen Prasad",
-    email: "naveen.elec@dispatchgrid.io",
+    email: "electrician13@dispatchgrid.demo",
     phone: "+91-98801-10013",
     experienceYears: 6,
     categories: ["Electrical"],
@@ -301,7 +301,7 @@ export const SEED_TECHNICIANS: SeedTechnicianDef[] = [
   {
     username: "electrician14",
     fullName: "Anil Deshmukh",
-    email: "anil.ac@dispatchgrid.io",
+    email: "electrician14@dispatchgrid.demo",
     phone: "+91-98801-10014",
     experienceYears: 8,
     categories: ["AC"], // Distinct AC
@@ -322,7 +322,7 @@ export const SEED_TECHNICIANS: SeedTechnicianDef[] = [
   {
     username: "electrician15",
     fullName: "Vikas Hegde",
-    email: "vikas.plumb@dispatchgrid.io",
+    email: "electrician15@dispatchgrid.demo",
     phone: "+91-98801-10015",
     experienceYears: 9,
     categories: ["Plumbing"],
@@ -343,7 +343,7 @@ export const SEED_TECHNICIANS: SeedTechnicianDef[] = [
   {
     username: "electrician16",
     fullName: "Prakash Chawla",
-    email: "prakash.tech@dispatchgrid.io",
+    email: "electrician16@dispatchgrid.demo",
     phone: "+91-98801-10016",
     experienceYears: 7,
     categories: ["Electrical", "AC"], // Multi-skilled: Electrical & AC
@@ -364,7 +364,7 @@ export const SEED_TECHNICIANS: SeedTechnicianDef[] = [
   {
     username: "electrician17",
     fullName: "Dinesh Bhatt",
-    email: "dinesh.elec@dispatchgrid.io",
+    email: "electrician17@dispatchgrid.demo",
     phone: "+91-98801-10017",
     experienceYears: 5,
     categories: ["Electrical"],
@@ -385,7 +385,7 @@ export const SEED_TECHNICIANS: SeedTechnicianDef[] = [
   {
     username: "electrician18",
     fullName: "Sanjay Singhal",
-    email: "sanjay.ac@dispatchgrid.io",
+    email: "electrician18@dispatchgrid.demo",
     phone: "+91-98801-10018",
     experienceYears: 6,
     categories: ["AC"], // Distinct AC
@@ -406,7 +406,7 @@ export const SEED_TECHNICIANS: SeedTechnicianDef[] = [
   {
     username: "electrician19",
     fullName: "Harish Chandra",
-    email: "harish.plumb@dispatchgrid.io",
+    email: "electrician19@dispatchgrid.demo",
     phone: "+91-98801-10019",
     experienceYears: 10,
     categories: ["Plumbing"],
@@ -427,7 +427,7 @@ export const SEED_TECHNICIANS: SeedTechnicianDef[] = [
   {
     username: "electrician20",
     fullName: "Raghav Menon",
-    email: "raghav.master@dispatchgrid.io",
+    email: "electrician20@dispatchgrid.demo",
     phone: "+91-98801-10020",
     experienceYears: 12,
     categories: ["Electrical", "AC", "Plumbing"], // Master All-Round Facility Tech

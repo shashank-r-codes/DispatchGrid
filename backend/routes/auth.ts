@@ -236,7 +236,7 @@ authRouter.post("/register-technician", (req, res) => {
 // Login
 authRouter.post("/login", (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { username, email, password, role } = req.body;
     const identifier = (username || email || "").trim();
     if (!identifier || !password) {
       return res.status(400).json({ error: "Username/Email and password are required" });
@@ -250,6 +250,16 @@ authRouter.post("/login", (req, res) => {
     const isValid = comparePassword(password, user.password_hash);
     if (!isValid) {
       return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    // Role verification against database record
+    if (role) {
+      const normalizedRole = role.toUpperCase().trim();
+      if (user.role !== normalizedRole) {
+        return res.status(403).json({
+          error: `Role mismatch: This account is registered as '${user.role}', but you selected '${normalizedRole}'. Please select the '${user.role}' role to sign in.`,
+        });
+      }
     }
 
     if (user.account_status === "SUSPENDED" || user.account_status === "REJECTED") {
@@ -275,6 +285,7 @@ authRouter.post("/login", (req, res) => {
         phone: user.phone,
         role: user.role,
         accountStatus: user.account_status,
+        profilePictureUrl: user.profile_picture_url || null,
       },
     });
   } catch (err: any) {
@@ -286,7 +297,7 @@ authRouter.post("/login", (req, res) => {
 // Me / Current Session User
 authRouter.get("/me", authenticateToken, (req: AuthenticatedRequest, res: Response) => {
   try {
-    const user = db.prepare("SELECT user_id, username, full_name, email, phone, role, account_status, created_at FROM users WHERE user_id = ?").get(req.user!.userId) as any;
+    const user = db.prepare("SELECT user_id, username, full_name, email, phone, role, account_status, profile_picture_url, created_at FROM users WHERE user_id = ?").get(req.user!.userId) as any;
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -294,7 +305,8 @@ authRouter.get("/me", authenticateToken, (req: AuthenticatedRequest, res: Respon
     let extraProfile: any = {};
     if (user.role === "CUSTOMER") {
       const addresses = db.prepare("SELECT * FROM customer_addresses WHERE customer_id = ? ORDER BY is_default DESC, created_at DESC").all(user.user_id);
-      extraProfile = { addresses };
+      const custProf = db.prepare("SELECT profile_picture_url FROM customer_profiles WHERE user_id = ?").get(user.user_id) as any;
+      extraProfile = { addresses, profilePictureUrl: user.profile_picture_url || custProf?.profile_picture_url || null };
     } else if (user.role === "TECHNICIAN") {
       const techProfile = db.prepare("SELECT * FROM technician_profiles WHERE user_id = ?").get(user.user_id) as any;
       const skills = db.prepare(`
@@ -312,6 +324,10 @@ authRouter.get("/me", authenticateToken, (req: AuthenticatedRequest, res: Respon
 
       extraProfile = {
         ...techProfile,
+        availabilityStatus: techProfile?.availability_status || "AVAILABLE",
+        totalCompletedJobs: techProfile?.total_completed_jobs || 0,
+        averageRating: techProfile?.average_rating || 5.0,
+        profilePictureUrl: user.profile_picture_url || techProfile?.profile_picture_url || null,
         skills,
         certifications,
         serviceAreas: techProfile ? JSON.parse(techProfile.service_areas || "[]") : [],
@@ -327,6 +343,7 @@ authRouter.get("/me", authenticateToken, (req: AuthenticatedRequest, res: Respon
         phone: user.phone,
         role: user.role,
         accountStatus: user.account_status,
+        profilePictureUrl: user.profile_picture_url || extraProfile.profilePictureUrl || null,
         ...extraProfile,
       },
     });

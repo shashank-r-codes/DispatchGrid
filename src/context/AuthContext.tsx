@@ -16,12 +16,13 @@ interface AuthContextType {
   token: string | null;
   role: UserRole | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string, role?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
-  switchRoleQuick: (role: "ADMIN" | "CUSTOMER" | "TECH_AC" | "TECH_ELEC") => Promise<void>;
+  switchRoleQuick: (role: "ADMIN" | "CUSTOMER" | "TECH_AC" | "TECH_ELEC" | "TECHNICIAN") => Promise<{ success: boolean; error?: string }>;
   notifications: NotificationItem[];
   refreshNotifications: () => Promise<void>;
   markNotificationRead: (id: string) => Promise<void>;
+  markAllNotificationsRead: () => Promise<void>;
   refreshUserProfile: () => Promise<void>;
 }
 
@@ -38,8 +39,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (token) {
       refreshUserProfile();
     } else {
-      // Default to Admin in demo mode if no token stored yet
-      switchRoleQuick("ADMIN");
+      setIsLoading(false);
     }
   }, [token]);
 
@@ -69,47 +69,73 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const refreshNotifications = async () => {
-    if (!token) return;
+    const curToken = token || localStorage.getItem("dg_token");
+    if (!curToken) return;
     try {
-      // In SQLite, notifications table stores notifications for current user
-      const res = await fetch("/api/auth/me", {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await fetch("/api/notifications", {
+        headers: { Authorization: `Bearer ${curToken}` },
       });
       if (res.ok) {
-        // Mock/simulated notifications refresh endpoint via me
+        const data = await res.json();
+        setNotifications(data.notifications || []);
       }
+    } catch (err) {
+      console.error("Notifications fetch failed:", err);
+    }
+  };
+
+  const markNotificationRead = async (id: string) => {
+    const curToken = token || localStorage.getItem("dg_token");
+    setNotifications((prev) => prev.map((n) => (n.notification_id === id ? { ...n, is_read: 1 } : n)));
+    if (!curToken) return;
+    try {
+      await fetch(`/api/notifications/${id}/read`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${curToken}` },
+      });
     } catch {
       // ignore
     }
   };
 
-  const markNotificationRead = async (id: string) => {
-    setNotifications((prev) => prev.map((n) => (n.notification_id === id ? { ...n, is_read: 1 } : n)));
+  const markAllNotificationsRead = async () => {
+    const curToken = token || localStorage.getItem("dg_token");
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: 1 })));
+    if (!curToken) return;
+    try {
+      await fetch("/api/notifications/mark-all-read", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${curToken}` },
+      });
+    } catch {
+      // ignore
+    }
   };
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string, role?: string): Promise<{ success: boolean; error?: string }> => {
     try {
       setIsLoading(true);
+      const payload: any = { email, password };
+      if (role) payload.role = role;
+
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(payload),
       });
 
+      const data = await res.json();
       if (!res.ok) {
-        const errData = await res.json();
-        console.warn("Login failed:", errData.error);
-        return false;
+        return { success: false, error: data.error || "Authentication failed" };
       }
 
-      const data = await res.json();
       localStorage.setItem("dg_token", data.token);
       setToken(data.token);
       setUser(data.user);
-      return true;
-    } catch (err) {
+      return { success: true };
+    } catch (err: any) {
       console.error("Login failed:", err);
-      return false;
+      return { success: false, error: err.message || "Network error connecting to auth server" };
     } finally {
       setIsLoading(false);
     }
@@ -121,23 +147,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
-  const switchRoleQuick = async (target: "ADMIN" | "CUSTOMER" | "TECH_AC" | "TECH_ELEC") => {
-    setIsLoading(true);
-    let email = "admin@dispatchgrid.io";
+  const switchRoleQuick = async (target: "ADMIN" | "CUSTOMER" | "TECH_AC" | "TECH_ELEC" | "TECHNICIAN"): Promise<{ success: boolean; error?: string }> => {
+    let email = "admin@dispatchgrid.demo";
     let pwd = "admin123";
+    let role = "ADMIN";
 
     if (target === "CUSTOMER") {
-      email = "customer@example.com";
-      pwd = "password123";
+      email = "customer@dispatchgrid.demo";
+      pwd = "12345";
+      role = "CUSTOMER";
     } else if (target === "TECH_AC") {
-      email = "amit.ac@dispatchgrid.io";
-      pwd = "password123";
-    } else if (target === "TECH_ELEC") {
-      email = "rajesh.elec@dispatchgrid.io";
-      pwd = "password123";
+      email = "electrician2@dispatchgrid.demo"; // Amit Patel (AC)
+      pwd = "12345";
+      role = "TECHNICIAN";
+    } else if (target === "TECH_ELEC" || target === "TECHNICIAN") {
+      email = "electrician1@dispatchgrid.demo"; // Rajesh Kumar (Electrical)
+      pwd = "12345";
+      role = "TECHNICIAN";
     }
 
-    await login(email, pwd);
+    return await login(email, pwd, role);
   };
 
   return (
@@ -153,6 +182,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         notifications,
         refreshNotifications,
         markNotificationRead,
+        markAllNotificationsRead,
         refreshUserProfile,
       }}
     >

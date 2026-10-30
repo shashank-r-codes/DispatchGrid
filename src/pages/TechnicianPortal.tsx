@@ -18,17 +18,24 @@ import {
   ChevronRight,
   Send,
   Zap,
+  ArrowLeft,
 } from "lucide-react";
 import { JobOffer, Booking, Technician } from "../types";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { DispatchMap } from "../components/DispatchMap";
 
-export const TechnicianPortal: React.FC = () => {
+interface TechnicianPortalProps {
+  onBack?: () => void;
+  activeSubTab?: string;
+  onSubTabChange?: (tab: string) => void;
+}
+
+export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, activeSubTab, onSubTabChange }) => {
   const { user, login, logout } = useAuth();
   const { showToast } = useToast();
 
-  const [loginUsername, setLoginUsername] = useState<string>("electrician1");
+  const [loginEmail, setLoginEmail] = useState<string>("electrician1@dispatchgrid.demo");
   const [loginPassword, setLoginPassword] = useState<string>("12345");
   const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<string>("");
@@ -36,6 +43,18 @@ export const TechnicianPortal: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
     "dashboard" | "offers" | "assigned" | "schedule" | "availability" | "history" | "profile"
   >("dashboard");
+
+  // Sync activeTab with Navbar selection
+  useEffect(() => {
+    if (activeSubTab && ["dashboard", "offers", "assigned", "schedule", "availability", "history", "profile"].includes(activeSubTab)) {
+      setActiveTab(activeSubTab as any);
+    }
+  }, [activeSubTab]);
+
+  const switchTab = (tab: "dashboard" | "offers" | "assigned" | "schedule" | "availability" | "history" | "profile") => {
+    setActiveTab(tab);
+    if (onSubTabChange) onSubTabChange(tab);
+  };
 
   const [offers, setOffers] = useState<JobOffer[]>([]);
   const [assignedBookings, setAssignedBookings] = useState<Booking[]>([]);
@@ -286,39 +305,39 @@ export const TechnicianPortal: React.FC = () => {
   const activeJobs = assignedBookings.filter((b) => ["ASSIGNED", "ON_THE_WAY", "IN_PROGRESS", "SCHEDULED"].includes(b.bookingStatus));
   const completedJobs = assignedBookings.filter((b) => b.bookingStatus === "COMPLETED");
 
-  const handleTechnicianLogin = async (overrideUser?: string, overridePass?: string) => {
+  const handleTechnicianLogin = async (overrideEmail?: string, overridePass?: string) => {
     setIsLoggingIn(true);
     setLoginError("");
-    const u = overrideUser || loginUsername;
+    const em = overrideEmail || loginEmail;
     const p = overridePass || loginPassword;
-    const success = await login(u, p);
-    if (!success) {
-      setLoginError("Invalid credentials. Please verify technician username and password.");
+    const result = await login(em, p, "TECHNICIAN");
+    if (!result.success) {
+      setLoginError(result.error || "Invalid technician credentials. Please check email and password.");
     }
     setIsLoggingIn(false);
   };
 
   const SEEDED_TECH_ACCOUNTS = [
-    { username: "electrician1", name: "Rajesh Kumar", category: "Electrical & AC", cert: "EPA Section 608" },
-    { username: "electrician2", name: "Amit Patel", category: "AC Specialist", cert: "EPA Universal & HVAC" },
-    { username: "electrician3", name: "Suresh Nair", category: "Plumbing Specialist", cert: "Master Plumber" },
-    { username: "electrician4", name: "Vikram Rao", category: "Electrical & AC", cert: "EPA Section 608" },
-    { username: "electrician5", name: "Kavita Sharma", category: "Master Plumbing", cert: "Master Plumber" },
-    { username: "electrician6", name: "Mohammad Ali", category: "Electrical Specialist", cert: "Licensed Wireman" },
-    { username: "electrician7", name: "Pooja Hegde", category: "AC Specialist", cert: "HVAC Excellence" },
-    { username: "electrician8", name: "Arjun Reddy", category: "Electrical & Plumbing", cert: "Wireman & Plumber" },
-    { username: "electrician9", name: "Deepak Verma", category: "AC Specialist", cert: "EPA Universal" },
-    { username: "electrician10", name: "Rohan Kulkarni", category: "General Electrical", cert: "Licensed Wireman" },
-    { username: "electrician11", name: "Girish Nair", category: "General Electrical", cert: "Licensed Wireman" },
-    { username: "electrician12", name: "Farhan Siddiqui", category: "AC Specialist", cert: "EPA Section 608" },
-    { username: "electrician13", name: "Naveen Prasad", category: "Plumbing Specialist", cert: "Master Plumber" },
-    { username: "electrician14", name: "Prakash Joshi", category: "General Electrical", cert: "Licensed Wireman" },
-    { username: "electrician15", name: "Santosh Yadav", category: "AC Specialist", cert: "HVAC Excellence" },
-    { username: "electrician16", name: "Manoj Deshmukh", category: "Master Plumbing", cert: "Master Plumber" },
-    { username: "electrician17", name: "Anand Iyer", category: "General Electrical", cert: "Licensed Wireman" },
-    { username: "electrician18", name: "Karthik Subramanian", category: "AC Specialist", cert: "EPA Section 608" },
-    { username: "electrician19", name: "Sachin Patil", category: "Plumbing Specialist", cert: "Master Plumber" },
-    { username: "electrician20", name: "Vinay Kumar", category: "Multi-Skill (All 3)", cert: "EPA & Master Plumber" },
+    { email: "electrician1@dispatchgrid.demo", name: "Rajesh Kumar", category: "Electrical", cert: "Wireman Grade A" },
+    { email: "electrician2@dispatchgrid.demo", name: "Amit Patel", category: "AC Specialist", cert: "EPA Universal & HVAC" },
+    { email: "electrician3@dispatchgrid.demo", name: "Suresh Reddy", category: "Plumbing Specialist", cert: "Master Plumber" },
+    { email: "electrician4@dispatchgrid.demo", name: "Vikram Rao", category: "Electrical & AC", cert: "EPA Section 608" },
+    { email: "electrician5@dispatchgrid.demo", name: "Priya Sharma", category: "Electrical", cert: "Wireman Grade A" },
+    { email: "electrician6@dispatchgrid.demo", name: "Karan Malhotra", category: "AC Specialist", cert: "EPA Section 608" },
+    { email: "electrician7@dispatchgrid.demo", name: "Manoj Swaminathan", category: "Plumbing Specialist", cert: "Master Plumber" },
+    { email: "electrician8@dispatchgrid.demo", name: "Deepak Joshi", category: "Electrical", cert: "HV Safety Inspector" },
+    { email: "electrician9@dispatchgrid.demo", name: "Sunil Grover", category: "AC Specialist", cert: "HVAC Specialist" },
+    { email: "electrician10@dispatchgrid.demo", name: "Rohan Kulkarni", category: "Electrical & Plumbing", cert: "Wireman & Plumber" },
+    { email: "electrician11@dispatchgrid.demo", name: "Girish Nair", category: "Plumbing Specialist", cert: "Master Plumber" },
+    { email: "electrician12@dispatchgrid.demo", name: "Farhan Siddiqui", category: "AC Specialist", cert: "EPA Section 608" },
+    { email: "electrician13@dispatchgrid.demo", name: "Naveen Prasad", category: "Electrical", cert: "Wireman Grade A" },
+    { email: "electrician14@dispatchgrid.demo", name: "Anil Deshmukh", category: "AC Specialist", cert: "HVAC Specialist" },
+    { email: "electrician15@dispatchgrid.demo", name: "Vikas Hegde", category: "Plumbing Specialist", cert: "Master Plumber" },
+    { email: "electrician16@dispatchgrid.demo", name: "Prakash Chawla", category: "Electrical & AC", cert: "Wireman & EPA" },
+    { email: "electrician17@dispatchgrid.demo", name: "Dinesh Bhatt", category: "Electrical", cert: "Wireman Grade A" },
+    { email: "electrician18@dispatchgrid.demo", name: "Sanjay Singhal", category: "AC Specialist", cert: "EPA Section 608" },
+    { email: "electrician19@dispatchgrid.demo", name: "Harish Chandra", category: "Plumbing Specialist", cert: "Master Plumber" },
+    { email: "electrician20@dispatchgrid.demo", name: "Raghav Menon", category: "All (Electrical, AC, Plumbing)", cert: "Wireman, EPA, Master Plumber" },
   ];
 
   if (!user || user.role !== "TECHNICIAN") {
@@ -345,12 +364,12 @@ export const TechnicianPortal: React.FC = () => {
 
           <div className="space-y-3 text-xs">
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Technician Username</label>
+              <label className="block font-bold text-slate-700 mb-1">Technician Email</label>
               <input
-                type="text"
-                placeholder="e.g. electrician1"
-                value={loginUsername}
-                onChange={(e) => setLoginUsername(e.target.value)}
+                type="email"
+                placeholder="e.g. electrician1@dispatchgrid.demo"
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
                 className="w-full rounded-xl border-slate-200 bg-slate-50 p-3 font-mono text-xs focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -386,17 +405,17 @@ export const TechnicianPortal: React.FC = () => {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
             {SEEDED_TECH_ACCOUNTS.map((t) => (
               <button
-                key={t.username}
+                key={t.email}
                 onClick={() => {
-                  setLoginUsername(t.username);
+                  setLoginEmail(t.email);
                   setLoginPassword("12345");
-                  handleTechnicianLogin(t.username, "12345");
+                  handleTechnicianLogin(t.email, "12345");
                 }}
                 className="p-2.5 bg-white hover:bg-blue-50 hover:border-blue-300 border border-slate-200 rounded-xl text-left transition space-y-1 shadow-2xs group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
                   <span className="font-mono font-bold text-blue-600 text-[11px] group-hover:underline">
-                    {t.username}
+                    {t.email.split("@")[0]}
                   </span>
                   <span className="text-[9px] px-1 py-0.2 bg-slate-100 rounded text-slate-500">
                     12345
@@ -415,9 +434,19 @@ export const TechnicianPortal: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      {/* Top Profile Banner */}
+      {/* Top Profile Banner with Back Button */}
       <div className="bg-slate-900 text-white p-6 rounded-3xl border border-slate-800 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-bold transition border border-slate-700 shadow-sm cursor-pointer mb-3"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 text-blue-400" />
+              <span>Back</span>
+            </button>
+          )}
           <div className="flex items-center gap-2 mb-1.5">
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-400/30 uppercase tracking-wider">
               {technicianProfile?.username || "Technician Portal"}

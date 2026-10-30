@@ -4,7 +4,7 @@
 [![React](https://img.shields.io/badge/React-19-cyan.svg)](https://react.dev/)
 [![SQLite](https://img.shields.io/badge/SQLite-WAL%20Mode-blue.svg)](https://www.sqlite.org/)
 [![OR-Tools](https://img.shields.io/badge/Google%20OR--Tools-CP--SAT-orange.svg)](https://developers.google.com/optimization)
-[![Tests](https://img.shields.io/badge/Tests-45%2F45%20Passing-emerald.svg)](scripts/runTests.ts)
+[![Tests](https://img.shields.io/badge/Tests-61%2F61%20Passing%20(100%25)-emerald.svg)](scripts/runTests.ts)
 
 **DispatchGrid** is an end-to-end intelligent workforce dispatch and dynamic schedule recovery platform designed for field service management across **Electrical**, **AC (Air Conditioning)**, and **Plumbing** specialisations. 
 
@@ -14,115 +14,177 @@ It implements automated customer self-service booking, strict qualification and 
 
 ## 📑 Table of Contents
 
-1. [Architecture & 3 Distinct Experiences](#1-three-separate-application-experiences)
-2. [Demo Credentials (20 Technicians & Admin)](#2-demo-credentials)
-3. [Quick Start & Setup Instructions](#3-quick-start--setup-instructions)
-4. [Dataset & Seed Script](#4-exact-dataset-requirements)
-5. [Scheduling Algorithms & Multi-Criteria Scoring](#5-scheduling-engine--algorithms)
-6. [Disruption & Adaptive Recovery Scenarios](#6-disruption--adaptive-recovery-scenarios)
-7. [Database Schema & Table Changes](#7-database-schema--tables)
-8. [REST API Endpoints](#8-rest-api-documentation)
-9. [Automated Test Suite & Acceptance Results](#9-automated-test-suite)
-10. [Assumptions & Limitations](#10-assumptions--limitations)
+1. [One Common Login Page for All Three Roles](#1-one-common-login-page-for-all-three-roles)
+2. [Demo Credentials (Admin, Customer, and 20 Technicians)](#2-demo-credentials)
+3. [Back Button Navigation on Every Page](#3-back-button-navigation-on-every-page)
+4. [Customer Portal Booking Confirmation & Auto-Allocation](#4-customer-portal-booking-confirmation--auto-allocation)
+5. [Admin Dashboard – Technician Shift Timeline (Multi-Row Gantt)](#5-admin-dashboard--technician-shift-timeline-multi-row-gantt)
+6. [Role Navigation Structure (10 Admin Views, 6 Customer Views, 7 Technician Views)](#6-role-navigation-structure)
+7. [Quick Start & Setup Instructions](#7-quick-start--setup-instructions)
+8. [Automated Test Suite & Acceptance Results](#8-automated-test-suite--acceptance-results)
 
 ---
 
-## 1. Three Separate Application Experiences
+## 1. One Common Login Page for All Three Roles
 
-DispatchGrid provides three completely decoupled user experiences:
-
-### A. Admin / Dispatcher Command Center (`/` or `Admin / Dispatcher` pill)
-Full operational visibility and manual override controls across 11 dedicated navigation tabs:
-1. **Overview Dashboard**: High-level operational summaries, 12 live KPI cards, unassigned jobs requiring triage with actionable explanations, and real-time offer cascade logs.
-2. **All Jobs / Bookings**: Filterable table of all 105+ service bookings with priority triage, auto-assign trigger, and explainability modals.
-3. **Technician Management**: Directory of all 20 technicians showing username, display name, skills, certifications, shift hours, ratings, and current workload.
-4. **Technician Verification**: Administrator review center to approve, reject, or suspend specialist accounts.
-5. **Live Dispatch Map**: Full-screen interactive Leaflet map rendering Bengaluru Metro Road Network nodes, active routes, and technician GPS pins.
-6. **Technician Shift Timeline**: Gantt schedule timeline displaying shift boundaries (08:00–18:00), booked appointments, travel times, and emergency capacity buffers.
-7. **Scheduling and Optimisation**: OR-Tools CP-SAT objective weight tuning panel with "Run CP-SAT Optimizer" execution and Before-and-After schedule comparisons.
-8. **Disruption Simulator**: In-page interactive simulator supporting all 6 disruption scenarios with immediate cascading rebalance.
-9. **Recovery Audit Logs**: Immutable audit log of all system recovery operations, timestamps, affected bookings, and root cause notes.
-10. **Benchmark Runner**: Algorithmic performance benchmark suite testing 25, 100, 250, and 500 problem sizes.
-11. **Documentation and Architecture**: Complete embedded technical reference.
-
-#### 12 Admin Dashboard KPI Metrics:
-- **Total Jobs**
-- **Pending Jobs**
-- **Assigned Jobs**
-- **Jobs in Progress**
-- **Completed Jobs**
-- **Cancelled Jobs**
-- **Unassigned Jobs**
-- **Emergency Jobs**
-- **Available Technicians**
-- **Unavailable Technicians**
-- **Pending Technician Verifications**
-- **SLA Violations and Jobs at Risk**
-
-### B. Customer Portal (`Customer Portal` pill)
-Public self-service interface without requiring customer login:
-- **Step 1: Service Selection**: Electrical, AC, or Plumbing.
-  > *Strict Specialisation Rule*: AC is isolated from general electricians. Technicians must hold verified EPA Section 608 Universal or HVAC Excellence certifications.
-- **Step 2: Job Information**: Customer name, phone, address, coordinates, preferred appointment window, duration, requested priority, and notes.
-- **Step 3: Instant Booking Submission**: Automatically generates a unique booking reference (`DG-2026-XXXXX`), persists record in SQLite, and immediately triggers the automatic scheduling engine. **No admin intervention or "Auto Allot" button required!**
-- **Step 4: Live Booking Tracking**: Lookup by Booking Reference + Registered Phone Number (protects customer privacy). Displays assigned technician name, contact, Dijkstra road distance, travel time, estimated arrival time (ETA), and Leaflet route with simulated GPS tracking.
-
-### C. Technician Portal (`Technician Portal` pill)
-Private workspace for technicians (`electrician1` to `electrician20`):
-- **Technician Login View**: Clean authentication screen with username/password inputs and a 1-click test selector for all 20 seeded specialists.
-- **7 Dashboard Navigation Tabs**:
-  1. *My Dashboard*: Shift status, workload, rating, and immediate alerts.
-  2. *New Job Offers*: Prominent offer cards with customer details, Dijkstra travel distance, travel minutes, and **Accept** / **Reject** buttons (with mandatory rejection reason).
-  3. *My Assigned Jobs*: Active job lifecycle buttons (`On The Way` → `Start Work` → `Complete Job`) and "Report Service Delay".
-  4. *My Schedule*: Daily itinerary with map route navigation.
-  5. *Availability*: Shift working hours update and "Report Sickness / Unavailability".
-  6. *Job History*: Completed service jobs with customer ratings and reviews.
-  7. *Profile and Skills*: Verified certifications, skills, and licensed categories.
-- **Strict Data Isolation**: Technicians can only view their own offers and assigned jobs.
+DispatchGrid provides **ONE common, branded login page** for the entire system:
+- **Branding**: Official DispatchGrid logo, title, and tagline (*Intelligent Workforce Scheduling & Recovery*).
+- **Role Selector**: Three distinct role-selection options placed right on the form:
+  - `[ Customer ]` (Blue)
+  - `[ Admin ]` (Purple)
+  - `[ Technician ]` (Emerald)
+- **Inputs**: Email address and password.
+- **Login Action**: `[ Sign In as <Role> ]`
+- **Role-Based Redirection**:
+  - `CUSTOMER`: Authenticates the customer and redirects to the **Customer Portal**.
+  - `ADMIN`: Authenticates the administrator and redirects to the **Admin Dispatcher Command Center**.
+  - `TECHNICIAN`: Authenticates the technician and redirects to the **Technician Dashboard** showing only that technician's jobs, offers, and schedule.
+- **Role Mismatch Security**:
+  - Strictly validates the selected role against the user's actual database role in SQLite.
+  - A customer attempting to log in by selecting "Admin" or a technician attempting to select "Admin" is rejected with HTTP `403 Forbidden` and a clear message: `"Role mismatch: This account is registered as 'CUSTOMER', but you selected 'ADMIN'."`
+- **Session Logout**:
+  - Persistent logout button in the header immediately clears JWT session tokens and returns the user to the common login page.
+- **Guest Option**:
+  - `[ Book a Service as Guest (No Login Required) → ]` allows customers to book directly without an account.
+- **1-Click Demo Picker**:
+  - Fast auto-fill buttons for Admin, Customer, and an expandable dropdown of all 20 technicians.
 
 ---
 
 ## 2. Demo Credentials
 
-### Seeded Technician Accounts (Password: `12345`)
-All 20 technicians are seeded with hashed passwords (`bcryptjs`) and initial status `APPROVED`:
+### Seeded Database Credentials (Bcrypt Hashed)
 
-| Username | Specialist Display Name | Primary Category | Verified Certifications & Skills |
-|---|---|---|---|
-| `electrician1` | Rajesh Kumar | Electrical | Licensed Wireman Grade A &middot; Wiring, DB Overhaul |
-| `electrician2` | Amit Patel | AC | EPA Section 608 Universal, HVAC Master &middot; Split AC, R32 |
-| `electrician3` | Suresh Nair | Plumbing | Licensed Master Plumber (LMP) &middot; Concealed Pipe Leakage |
-| `electrician4` | Vikram Rao | Electrical | Wireman Grade A &middot; Circuit Breakers, Switchboards |
-| `electrician5` | Kavita Sharma | Plumbing | Licensed Master Plumber (LMP) &middot; Fixtures, Drainage |
-| `electrician6` | Mohammad Ali | Electrical | Wireman Grade A &middot; Lighting, Short Circuit Faults |
-| `electrician7` | Pooja Hegde | AC | HVAC Excellence Master &middot; Compressor Inverter PCB |
-| `electrician8` | Arjun Reddy | Electrical & Plumbing | Wireman Grade A &middot; General Repairs |
-| `electrician9` | Deepak Verma | AC | EPA Section 608 &middot; Refrigerant R410A Vacuum Testing |
-| `electrician10` | Rohan Kulkarni | Electrical | Wireman Grade A &middot; Domestic Wiring, Fans |
-| `electrician11` | Girish Nair | Electrical | Wireman Grade A &middot; Industrial Power Setup |
-| `electrician12` | Farhan Siddiqui | AC | EPA Section 608 &middot; Multi-split HVAC Servicing |
-| `electrician13` | Naveen Prasad | Plumbing | Licensed Master Plumber &middot; Submersible Booster Pumps |
-| `electrician14` | Prakash Joshi | Electrical | Wireman Grade A &middot; Surge Protection, Grounding |
-| `electrician15` | Santosh Yadav | AC | HVAC Excellence Master &middot; Commercial Chillers |
-| `electrician16` | Manoj Deshmukh | Plumbing | Licensed Master Plumber &middot; Acoustic Leak Detection |
-| `electrician17` | Anand Iyer | Electrical | Wireman Grade A &middot; Emergency Fault Pinpointing |
-| `electrician18` | Karthik Subramanian | AC | EPA Section 608 Universal &middot; Inverter AC Diagnostics |
-| `electrician19` | Sachin Patil | Plumbing | Licensed Master Plumber &middot; Hydro-jet Pipe De-clogging |
-| `electrician20` | Vinay Kumar | Multi-Skill (All 3) | EPA Universal, Master Plumber, Wireman Grade A |
-
-### Administrator Account
-- **Username / Email**: `admin` or `admin@dispatchgrid.io`
-- **Password**: `admin123`
-- **Role**: `ADMIN` (Full operational dispatch control)
+| Role | Account Name | Login Email | Password | Primary Category & Certifications |
+|---|---|---|---|---|
+| **Admin** | Alex Mercer (Chief Dispatcher) | `admin@dispatchgrid.demo` | `admin123` | Full Workforce Dispatch Control |
+| **Customer** | David Miller (Valued Customer) | `customer@dispatchgrid.demo` | `12345` | Customer Service Booking & Real-Time Tracking |
+| **Tech 1** | Rajesh Kumar | `electrician1@dispatchgrid.demo` | `12345` | Electrical &middot; Wireman Grade A |
+| **Tech 2** | Amit Patel | `electrician2@dispatchgrid.demo` | `12345` | AC Specialist &middot; EPA Section 608 Universal, HVAC Master |
+| **Tech 3** | Suresh Reddy | `electrician3@dispatchgrid.demo` | `12345` | Plumbing Specialist &middot; Licensed Master Plumber (LMP) |
+| **Tech 4** | Vikram Rao | `electrician4@dispatchgrid.demo` | `12345` | Electrical & AC &middot; Wireman Grade A, EPA Section 608 |
+| **Tech 5** | Priya Sharma | `electrician5@dispatchgrid.demo` | `12345` | Electrical &middot; Wireman Grade A |
+| **Tech 6** | Karan Malhotra | `electrician6@dispatchgrid.demo` | `12345` | AC Specialist &middot; EPA Section 608 Universal |
+| **Tech 7** | Manoj Swaminathan | `electrician7@dispatchgrid.demo` | `12345` | Plumbing Specialist &middot; Licensed Master Plumber (LMP) |
+| **Tech 8** | Deepak Joshi | `electrician8@dispatchgrid.demo` | `12345` | Electrical &middot; HV Safety Inspector, Wireman Grade A |
+| **Tech 9** | Sunil Grover | `electrician9@dispatchgrid.demo` | `12345` | AC Specialist &middot; HVAC Excellence Master Specialist |
+| **Tech 10** | Rohan Kulkarni | `electrician10@dispatchgrid.demo` | `12345` | Electrical & Plumbing &middot; Wireman Grade A, LMP |
+| **Tech 11** | Girish Nair | `electrician11@dispatchgrid.demo` | `12345` | Plumbing Specialist &middot; Licensed Master Plumber (LMP) |
+| **Tech 12** | Farhan Siddiqui | `electrician12@dispatchgrid.demo` | `12345` | AC Specialist &middot; EPA Section 608 Universal |
+| **Tech 13** | Naveen Prasad | `electrician13@dispatchgrid.demo` | `12345` | Electrical &middot; Wireman Grade A |
+| **Tech 14** | Anil Deshmukh | `electrician14@dispatchgrid.demo` | `12345` | AC Specialist &middot; EPA Universal, HVAC Excellence |
+| **Tech 15** | Vikas Hegde | `electrician15@dispatchgrid.demo` | `12345` | Plumbing Specialist &middot; Licensed Master Plumber (LMP) |
+| **Tech 16** | Prakash Chawla | `electrician16@dispatchgrid.demo` | `12345` | Electrical & AC &middot; Wireman Grade A, EPA 608 |
+| **Tech 17** | Dinesh Bhatt | `electrician17@dispatchgrid.demo` | `12345` | Electrical &middot; Wireman Grade A |
+| **Tech 18** | Sanjay Singhal | `electrician18@dispatchgrid.demo` | `12345` | AC Specialist &middot; EPA Section 608 Universal |
+| **Tech 19** | Harish Chandra | `electrician19@dispatchgrid.demo` | `12345` | Plumbing Specialist &middot; Licensed Master Plumber (LMP) |
+| **Tech 20** | Raghav Menon | `electrician20@dispatchgrid.demo` | `12345` | Master Specialist (All 3) &middot; Wireman, EPA, LMP |
 
 ---
 
-## 3. Quick Start & Setup Instructions
+## 3. Back Button Navigation on Every Page
+
+- **Consistent Header Placement**: Located in the page header next to branding on both desktop and mobile.
+- **Application History Stack**: Seamlessly tracks viewed tabs and drill-downs, navigating back to previous screens.
+- **Authenticated Fallback Safety**: If the history stack is empty, it safely redirects to the user's role-specific home dashboard (`admin-dashboard`, `technician-portal`, or `customer-portal`). Authenticated users are **never** accidentally sent to the login screen or logged out when pressing Back.
+- **In-Page Form Steps**: Back navigation within the customer booking wizard navigates back to previous steps (e.g. from Review back to Edit Details) without losing customer inputs.
+
+---
+
+## 4. Customer Portal Booking Confirmation & Auto-Allocation
+
+- **Submit Button**: Clearly labeled `[ Confirm Booking & Trigger Auto Allocation ]`.
+- **Immediate Autonomous Allocation**:
+  - Generates unique reference code formatted as `DG-2026-XXXX`.
+  - Automatically filters qualified technicians (AC requires EPA Section 608/HVAC Excellence, Plumbing requires LMP, Electrical requires Wireman).
+  - Calculates travel time using the Metro Road Network Dijkstra algorithm.
+  - Scores candidates based on travel distance, rating, and current workload.
+  - Creates atomic `OFFERED` status in `job_offers` and delivers real-time notifications.
+- **Confirmation Popup / Modal**:
+  - Title: `BOOKING REQUEST SENT`
+  - Booking ID: `DG-2026-XXXX`
+  - Service: Selected maintenance package
+  - Assigned Technician: `<actual technician name> (<technician id>)` (e.g. `Amit Patel (USR_TECH_02)`)
+  - Status: `Awaiting technician acceptance`
+  - Action Button: `[ Track My Booking ]` (immediately transitions to live tracking view with Dijkstra road path).
+- **Alternative Unassigned Popup**:
+  - If no technician satisfies constraints (all booked in slot or out of travel perimeter), displays an unassigned explanation popup (never displays fake technicians).
+  - Outlines reasons and next steps (e.g. priority queue waitlist or dispatcher review).
+- **Offer Cascade**:
+  - If a technician clicks `[ Reject Offer ]` in the Technician Dashboard, the system atomically updates the offer to `REJECTED`, finds the next best eligible technician, and issues a replacement offer.
+
+---
+
+## 5. Admin Dashboard – Technician Shift Timeline (Multi-Row Gantt)
+
+The shift timeline has been redesigned into a comprehensive **multi-row scheduling Gantt view**:
+- **One Row Per Technician**: Displays all 20 technicians simultaneously on individual rows.
+- **Horizontal Time Axis**: 08:00 to 18:00 with 1-hour marker divisions.
+- **Shift Boundaries**: Shaded off-duty periods clearly distinguish outside shift hours.
+- **Visual Job Blocks**:
+  - `ASSIGNED`: Deep Blue with reference and service title.
+  - `IN_PROGRESS`: Amber with pulse animation.
+  - `COMPLETED`: Emerald Green.
+  - `EMERGENCY`: High-visibility Red with alert shield.
+- **Travel Time Segments**: Renders dedicated transit segments (`🚗 15m travel`) preceding each job based on Dijkstra route calculations.
+- **Reserved Emergency Buffer**: Distinct striped buffer window from **11:00 to 11:30** reserved for urgent hazard triage.
+- **Interactive Filters**:
+  - Search technician by name or username.
+  - Filter by category (`All`, `Electrical`, `AC`, `Plumbing`).
+  - Filter by status (`All`, `Assigned`, `In Progress`, `Completed`, `Emergency`).
+- **Interactive Job Modal**: Clicking any job block opens a modal with:
+  - Booking Reference and ID
+  - Customer Name and Phone Number
+  - Service Name, Category & Indicative Price
+  - Service Address and GPS coordinates
+  - Confirmed Start and End Times
+  - Travel Time (minutes) and Dijkstra path details
+  - Problem Description
+  - Assigned Technician Name, Rating, and Total Jobs
+
+---
+
+## 6. Role Navigation Structure
+
+User-facing navigation is decoupled and restricted by authenticated role:
+
+### A. Admin / Dispatcher (10 Views)
+*(Note: User-facing "Documentation & Architecture" tab has been removed from the navigation bar)*
+1. Overview Dashboard (with 12 KPI metrics)
+2. All Jobs / Bookings
+3. Technician Management
+4. Technician Verification
+5. Live Dispatch Map
+6. Technician Shift Timeline
+7. Scheduling and Optimisation
+8. Disruption Simulator
+9. Recovery Audit Logs
+10. Benchmark Runner
+
+### B. Customer Portal (6 Views)
+1. Dashboard / Welcome
+2. Book a Service (Step 1 Category, Step 2 Details, Step 3 Review & Auto-Allocation, Step 4 Confirmation)
+3. Track Booking / Technician Arrival (Dijkstra route tracking)
+4. My Bookings / History
+5. Reviews & Ratings
+6. Profile & Addresses
+
+### C. Technician Dashboard (7 Views)
+1. Overview / Stats
+2. Incoming Job Offers (Accept / Decline with recorded reason)
+3. Assigned Active Jobs (Lifecycle: On The Way → Start Work → Complete Job)
+4. My Shift Timeline
+5. Availability & Working Hours (and Report Sickness / Unavailability)
+6. Job History & Earnings
+7. Profile & Certifications
+
+---
+
+## 7. Quick Start & Setup Instructions
 
 ### Prerequisites
 - **Node.js**: v18.0.0 or higher
 - **npm**: v9.0.0 or higher
-- **Python**: 3.10+ (optional, required only for executing external OR-Tools CP-SAT solver script)
 
 ### Installation & Run
 
@@ -136,7 +198,7 @@ npm install
 # 3. Seed the comprehensive workforce dataset (20 Techs & 105 Jobs)
 npm run seed
 
-# 4. Run the automated test suite (verifies all 45 criteria)
+# 4. Run the automated test suite (verifies all 61 criteria)
 npm test
 
 # 5. Start the full-stack development server
@@ -147,7 +209,24 @@ The application will be live at: **http://localhost:3000**
 
 ---
 
-## 4. Exact Dataset Requirements
+## 8. Automated Test Suite & Acceptance Results
+
+Run tests anytime with:
+```bash
+npm test
+```
+
+### Verified Test Matrix (61 / 61 Passing):
+- **Suite 1: Dataset Verification** (20 Technicians, 105 Jobs, AC/Plumbing/Electrical distributions, EMERGENCY/HIGH/NORMAL priorities).
+- **Suite 2: One Common Login & Role Enforcement** (All 20 technicians `electrician1..20@dispatchgrid.demo` with password `12345`, `admin@dispatchgrid.demo`, `customer@dispatchgrid.demo`, strict 403 Role Mismatch rejection).
+- **Suite 2.B: Header Back Button Navigation** (History stack push/pop, role fallback safety).
+- **Suite 3: Customer Booking & Tracking** (Guest booking, instant auto-allotment, Dijkstra routing, privacy validation).
+- **Suite 4: Scheduling Constraints & AC Specialisation** (EPA 608 enforcement, general electrician isolation, priority queue weighting).
+- **Suite 5: Technician Offer Cascading** (Offer rejection, permanent reason logging, automatic reallocation to next candidate, job lifecycle).
+- **Suite 6: Adaptive Disruption Recovery** (Technician sickness, vehicle breakdown, emergency insertion, duration overrun, job cancellation, early completion).
+- **Suite 7: Admin Audit & Monitoring** (20 tech inspection, unassigned explanations, offers audit trail).
+- **Suite 8: Technician Shift Timeline Gantt Dataset** (20 individual rows, shift boundaries, 11:00-11:30 emergency reserve buffer, travel time segments).
+- **Suite 9: Clean Navigation & Docs Removal** (Admin has exactly 10 views, documentation removed from user-facing tabs).
 
 The seed script (`npm run seed` or `npx tsx scripts/seed.ts`) populates a realistic, reproducible dataset in SQLite (`dispatchgrid.db`):
 

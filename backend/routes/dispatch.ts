@@ -235,11 +235,22 @@ dispatchRouter.get("/timeline", authenticateToken, (req: AuthenticatedRequest, r
     const date = (req.query.date as string) || new Date().toISOString().split("T")[0];
 
     const techs = db.prepare(`
-      SELECT u.user_id as userId, u.username, u.full_name as fullName, tp.shift_start_time as shiftStart, tp.shift_end_time as shiftEnd, tp.service_categories as categories, tp.availability_status as status
+      SELECT 
+        u.user_id as userId,
+        u.username,
+        u.full_name as fullName,
+        u.email,
+        u.phone,
+        tp.shift_start_time as shiftStart,
+        tp.shift_end_time as shiftEnd,
+        tp.service_categories as categories,
+        tp.availability_status as status,
+        tp.average_rating as rating,
+        tp.total_completed_jobs as completedJobs,
+        tp.verification_status as verificationStatus
       FROM users u
       JOIN technician_profiles tp ON u.user_id = tp.user_id
-      WHERE tp.verification_status = 'APPROVED'
-      ORDER BY u.full_name ASC
+      ORDER BY u.user_id ASC
     `).all() as any[];
 
     const timelineData = techs.map((t) => {
@@ -247,21 +258,28 @@ dispatchRouter.get("/timeline", authenticateToken, (req: AuthenticatedRequest, r
         SELECT 
           b.booking_id as bookingId,
           b.booking_reference as bookingReference,
-          b.preferred_start_time as startTime,
-          b.preferred_end_time as endTime,
+          COALESCE(b.confirmed_start_time, b.preferred_start_time) as startTime,
+          COALESCE(b.confirmed_end_time, b.preferred_end_time) as endTime,
           b.booking_status as status,
           b.verified_priority as priority,
           s.service_name as serviceName,
           s.category as category,
-          b.estimated_travel_time_minutes as travelMinutes,
-          COALESCE(b.customer_name, cu.full_name, 'Customer') as customerName
+          b.service_address as serviceAddress,
+          b.latitude,
+          b.longitude,
+          b.problem_description as problemDescription,
+          COALESCE(b.estimated_travel_time_minutes, 15) as travelMinutes,
+          COALESCE(b.customer_name, cu.full_name, 'Customer') as customerName,
+          COALESCE(b.customer_phone, cu.phone, 'N/A') as customerPhone,
+          s.indicative_price as price,
+          s.estimated_duration_minutes as durationMinutes
         FROM bookings b
         JOIN services s ON b.service_id = s.service_id
         LEFT JOIN users cu ON b.customer_id = cu.user_id
         WHERE b.assigned_technician_id = ?
         AND b.preferred_date = ?
         AND b.booking_status NOT IN ('CANCELLED', 'REJECTED')
-        ORDER BY b.preferred_start_time ASC
+        ORDER BY startTime ASC
       `).all(t.userId, date);
 
       return {

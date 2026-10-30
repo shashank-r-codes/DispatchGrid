@@ -148,10 +148,11 @@ export class EligibilityService {
     const technicians = this.getAllTechnicians();
     const results: EligibilityResult[] = [];
 
-    // Parse job day of week (e.g. 'Mon', 'Tue')
-    const jobDate = new Date(job.preferredDate);
+    // Parse job day of week (immune to local timezone shifts)
+    const dateOnly = job.preferredDate.split("T")[0];
+    const jobDate = new Date(`${dateOnly}T12:00:00Z`);
     const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const jobDayName = dayNames[jobDate.getDay()];
+    const jobDayName = dayNames[jobDate.getUTCDay()];
 
     const targetNode = METRO_NODES[job.nodeId] || METRO_NODES.NODE_CENTRAL;
     const excludedSet = new Set(options?.excludedTechnicianIds || []);
@@ -167,11 +168,11 @@ export class EligibilityService {
       // Check DB for past rejection on this booking
       if (job.bookingId) {
         const pastReject = db.prepare(`
-          SELECT offer_id, rejection_reason FROM job_offers
-          WHERE booking_id = ? AND technician_id = ? AND status = 'REJECTED'
+          SELECT offer_id, rejection_reason, status FROM job_offers
+          WHERE booking_id = ? AND technician_id = ? AND status IN ('REJECTED', 'EXPIRED')
         `).get(job.bookingId, tech.userId) as any;
         if (pastReject) {
-          reasons.push(`Technician declined this job offer (Reason: ${pastReject.rejection_reason || "Declined"})`);
+          reasons.push(`Technician previously declined or timed out on this job offer (Status: ${pastReject.status}, Reason: ${pastReject.rejection_reason || "Declined"})`);
         }
       }
 

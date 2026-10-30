@@ -103,9 +103,45 @@ bookingsRouter.get("/track", (req: Request, res: Response) => {
       estimatedArrivalTime = etaDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     }
 
+    // Fetch complete offer history for this booking (Section 5 Requirement)
+    const offerHistory = db.prepare(`
+      SELECT 
+        jo.offer_id as offerId,
+        jo.technician_id as technicianId,
+        u.full_name as technicianName,
+        jo.status as offerStatus,
+        jo.rejection_reason as rejectionReason,
+        jo.offered_at as offeredAt,
+        jo.responded_at as respondedAt,
+        jo.distance_km as distanceKm,
+        jo.travel_minutes as travelMinutes,
+        COALESCE(jo.attempt_number, 1) as attemptNumber
+      FROM job_offers jo
+      JOIN users u ON jo.technician_id = u.user_id
+      WHERE jo.booking_id = ?
+      ORDER BY COALESCE(jo.attempt_number, 1) ASC, jo.rowid ASC
+    `).all(booking.bookingId) as any[];
+
+    const activeOffer = offerHistory.find((o) => o.offerStatus === "OFFERED") || 
+                        offerHistory.find((o) => o.offerStatus === "ACCEPTED") || 
+                        offerHistory[offerHistory.length - 1] || null;
+
+    const latestNotif = db.prepare(`
+      SELECT title, message, created_at, type
+      FROM notifications
+      WHERE reference_id = ?
+      ORDER BY created_at DESC
+      LIMIT 1
+    `).get(booking.bookingId) as any;
+
     return res.json({
       booking: {
         ...booking,
+        offerHistory,
+        techniciansContactedCount: offerHistory.length,
+        currentTechnicianName: activeOffer ? activeOffer.technicianName : (booking.technicianName || null),
+        currentOfferStatus: activeOffer ? activeOffer.offerStatus : (booking.bookingStatus === "OFFERED" ? "OFFERED" : null),
+        latestNotification: latestNotif || null,
         distanceKm,
         travelMinutes,
         estimatedArrivalTime,
@@ -175,11 +211,13 @@ bookingsRouter.get("/", authenticateToken, (req: AuthenticatedRequest, res: Resp
 
     // Role restrictions
     if (req.user!.role === "CUSTOMER") {
-      query += " AND (b.customer_id = ? OR b.customer_phone = ?)";
-      params.push(req.user!.userId, req.user!.email);
+      const custUser = db.prepare("SELECT phone FROM users WHERE user_id = ?").get(req.user!.userId) as { phone: string } | undefined;
+      query += " AND (b.customer_id = ? OR (b.customer_phone IS NOT NULL AND b.customer_phone = ?))";
+      params.push(req.user!.userId, custUser?.phone || "");
     } else if (req.user!.role === "TECHNICIAN") {
-      query += " AND (b.assigned_technician_id = ? OR b.booking_id IN (SELECT booking_id FROM job_offers WHERE technician_id = ?))";
-      params.push(req.user!.userId, req.user!.userId);
+      query += ` AND (b.assigned_technician_id = ? OR (b.booking_id IN (SELECT booking_id FROM job_offers WHERE technician_id = ? AND status = 'OFFERED')))` +
+               ` AND NOT EXISTS (SELECT 1 FROM job_offers jo_r WHERE jo_r.booking_id = b.booking_id AND jo_r.technician_id = ? AND jo_r.status = 'REJECTED')`;
+      params.push(req.user!.userId, req.user!.userId, req.user!.userId);
     }
 
     if (status) {
@@ -204,8 +242,42 @@ bookingsRouter.get("/", authenticateToken, (req: AuthenticatedRequest, res: Resp
 
     query += " ORDER BY b.created_at DESC";
 
-    const bookings = db.prepare(query).all(...params);
-    return res.json({ bookings });
+    const bookings = db.prepare(query).all(...params) as any[];
+
+    // Attach offers and reallocation info for each booking (Section 7 Admin Dashboard Requirement)
+    const offerStmt = db.prepare(`
+      SELECT 
+        jo.offer_id as offerId,
+        jo.technician_id as technicianId,
+        u.full_name as technicianName,
+        jo.status as offerStatus,
+        jo.rejection_reason as rejectionReason,
+        jo.offered_at as offeredAt,
+        jo.responded_at as respondedAt,
+        jo.distance_km as distanceKm,
+        jo.travel_minutes as travelMinutes,
+        COALESCE(jo.attempt_number, 1) as attemptNumber
+      FROM job_offers jo
+      JOIN users u ON jo.technician_id = u.user_id
+      WHERE jo.booking_id = ?
+      ORDER BY COALESCE(jo.attempt_number, 1) ASC, jo.rowid ASC
+    `);
+
+    const enrichedBookings = bookings.map((b) => {
+      const offers = offerStmt.all(b.bookingId) as any[];
+      const rejectedOffers = offers.filter((o) => o.offerStatus === "REJECTED");
+      const activeOff = offers.find((o) => o.offerStatus === "OFFERED");
+      return {
+        ...b,
+        offers,
+        offerCount: offers.length,
+        rejectedOfferCount: rejectedOffers.length,
+        currentContactedTechnician: activeOff ? activeOff.technicianName : (b.assignedTechnicianName || null),
+        currentOfferStatus: activeOff ? "OFFERED" : (b.bookingStatus === "OFFERED" ? "OFFERED" : null),
+      };
+    });
+
+    return res.json({ bookings: enrichedBookings });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }

@@ -70,10 +70,11 @@ export class AssignmentEngine {
   public static offerJobToBestCandidate(
     job: SchedulingJob,
     weights: AssignmentWeights = DEFAULT_WEIGHTS,
-    runId: string = randomUUID()
+    runId: string = randomUUID(),
+    options?: { excludedTechnicianIds?: string[] }
   ): OfferExecutionResult {
     // 1. Evaluate hard constraints for all technicians
-    const eligibilityResults = EligibilityService.evaluateCandidates(job);
+    const eligibilityResults = EligibilityService.evaluateCandidates(job, options);
 
     const eligible = eligibilityResults.filter((r) => r.isEligible);
     const rejected = eligibilityResults
@@ -89,7 +90,7 @@ export class AssignmentEngine {
       let actionableReason = "No eligible technicians found meeting mandatory skills, certifications, and schedule availability.";
       
       const acCertMissing = rejected.some(r => r.reasons.some(reason => reason.toLowerCase().includes("ac")));
-      const allDeclined = rejected.every(r => r.reasons.some(reason => reason.toLowerCase().includes("declined") || reason.toLowerCase().includes("rejected")));
+      const allDeclined = rejected.every(r => r.reasons.some(reason => reason.toLowerCase().includes("declined") || reason.toLowerCase().includes("rejected") || reason.toLowerCase().includes("timed out")));
       const outsideZone = rejected.every(r => r.reasons.some(reason => reason.toLowerCase().includes("zone") || reason.toLowerCase().includes("locality")));
       const shiftConflict = rejected.every(r => r.reasons.some(reason => reason.toLowerCase().includes("shift") || reason.toLowerCase().includes("outside")));
       const scheduleOverlap = rejected.some(r => r.reasons.some(reason => reason.toLowerCase().includes("conflict") || reason.toLowerCase().includes("overlap")));
@@ -106,10 +107,11 @@ export class AssignmentEngine {
         actionableReason = "All certified technicians have existing schedule conflicts for this appointment window.";
       }
 
-      // Commit unassigned status
+      // Commit unassigned status and clear assigned technician
       db.prepare(`
         UPDATE bookings
         SET booking_status = 'UNASSIGNED',
+            assigned_technician_id = NULL,
             unassigned_reason = ?,
             updated_at = CURRENT_TIMESTAMP
         WHERE booking_id = ?
@@ -145,6 +147,30 @@ export class AssignmentEngine {
         `Booking ${job.bookingReference} (${job.category}) could not be auto-assigned: ${actionableReason}`,
         job.bookingId
       );
+
+      // Notify Customer (Section 6 Requirement)
+      let custUserId = job.customerId;
+      if (!custUserId || custUserId === "GUEST") {
+        const b = db.prepare("SELECT customer_id, customer_phone FROM bookings WHERE booking_id = ?").get(job.bookingId) as any;
+        if (b?.customer_id && b.customer_id !== "GUEST") {
+          custUserId = b.customer_id;
+        } else if (b?.customer_phone) {
+          const u = db.prepare("SELECT user_id FROM users WHERE phone = ? AND role = 'CUSTOMER'").get(b.customer_phone) as any;
+          if (u) custUserId = u.user_id;
+        }
+      }
+
+      if (custUserId && custUserId !== "GUEST") {
+        db.prepare(`
+          INSERT INTO notifications (notification_id, recipient_user_id, title, message, type, reference_id)
+          VALUES (?, ?, 'No Technician Available', ?, 'UNASSIGNED', ?)
+        `).run(
+          randomUUID(),
+          custUserId,
+          `We could not find an available technician for your selected appointment. Your request is still recorded. Please select an alternative time or contact support. (Booking ID: ${job.bookingReference})`,
+          job.bookingId
+        );
+      }
 
       return {
         bookingId: job.bookingId,
@@ -225,13 +251,15 @@ export class AssignmentEngine {
 
     // 3. Commit Atomic Job Offer to Database
     const offerId = "OFFER_" + randomUUID().substring(0, 8);
+    const prevOffersRow = db.prepare("SELECT COUNT(*) as count FROM job_offers WHERE booking_id = ?").get(job.bookingId) as { count: number };
+    const attemptNumber = (prevOffersRow ? prevOffersRow.count : 0) + 1;
 
     const offerTx = db.transaction(() => {
-      // Create offer record
+      // Create offer record with attempt_number and runId
       db.prepare(`
-        INSERT INTO job_offers (offer_id, booking_id, technician_id, status, travel_minutes, distance_km, score)
-        VALUES (?, ?, ?, 'OFFERED', ?, ?, ?)
-      `).run(offerId, job.bookingId, winner.technicianId, winner.travelMinutes, winner.distanceKm, winner.assignmentCost);
+        INSERT INTO job_offers (offer_id, booking_id, technician_id, status, travel_minutes, distance_km, score, attempt_number, scheduling_run_id)
+        VALUES (?, ?, ?, 'OFFERED', ?, ?, ?, ?, ?)
+      `).run(offerId, job.bookingId, winner.technicianId, winner.travelMinutes, winner.distanceKm, winner.assignmentCost, attemptNumber, runId);
 
       // Update booking status to OFFERED
       db.prepare(`
@@ -248,7 +276,7 @@ export class AssignmentEngine {
       db.prepare(`
         INSERT INTO booking_status_history (history_id, booking_id, from_status, to_status, changed_by_user_id, change_reason)
         VALUES (?, ?, 'PENDING', 'OFFERED', 'SYSTEM_DISPATCH_ENGINE', ?)
-      `).run(randomUUID(), job.bookingId, `Job offer dispatched to ${winner.fullName}: ${reason}`);
+      `).run(randomUUID(), job.bookingId, `Job offer (Attempt #${attemptNumber}) dispatched to ${winner.fullName}: ${reason}`);
 
       // Explainability record
       db.prepare(`
@@ -280,17 +308,39 @@ export class AssignmentEngine {
         offerId
       );
 
-      // Customer Notification
-      if (job.customerId && job.customerId !== "GUEST") {
-        const custExists = db.prepare("SELECT user_id FROM users WHERE user_id = ?").get(job.customerId);
-        if (custExists) {
+      // Customer Notification (Section 4 Requirements)
+      let custUserId = job.customerId;
+      if (!custUserId || custUserId === "GUEST") {
+        const b = db.prepare("SELECT customer_id, customer_phone FROM bookings WHERE booking_id = ?").get(job.bookingId) as any;
+        if (b?.customer_id && b.customer_id !== "GUEST") {
+          custUserId = b.customer_id;
+        } else if (b?.customer_phone) {
+          const u = db.prepare("SELECT user_id FROM users WHERE phone = ? AND role = 'CUSTOMER'").get(b.customer_phone) as any;
+          if (u) custUserId = u.user_id;
+        }
+      }
+
+      if (custUserId && custUserId !== "GUEST") {
+        if (attemptNumber > 1) {
+          // Notification 2: New technician selected after reallocation
+          db.prepare(`
+            INSERT INTO notifications (notification_id, recipient_user_id, title, message, type, reference_id)
+            VALUES (?, ?, 'Awaiting technician acceptance', ?, 'REALLOCATION', ?)
+          `).run(
+            randomUUID(),
+            custUserId,
+            `Good news! Your request has been sent to another technician. Specialist: ${winner.fullName}. Status: Awaiting technician acceptance. (Booking ID: ${job.bookingReference})`,
+            job.bookingId
+          );
+        } else {
+          // Initial Offer Notification
           db.prepare(`
             INSERT INTO notifications (notification_id, recipient_user_id, title, message, type, reference_id)
             VALUES (?, ?, 'Specialist Matched', ?, 'STATUS_UPDATE', ?)
           `).run(
             randomUUID(),
-            job.customerId,
-            `We have matched certified specialist ${winner.fullName} for your booking (${job.bookingReference}). Awaiting final technician confirmation.`,
+            custUserId,
+            `We have matched certified specialist ${winner.fullName} for your booking (${job.bookingReference}). Status: Awaiting technician acceptance.`,
             job.bookingId
           );
         }
@@ -351,6 +401,12 @@ export class AssignmentEngine {
       throw new Error(`Offer is no longer valid (Current status: ${offer.status}).`);
     }
 
+    // Protection against two technicians accepting the same booking
+    const currentBooking = db.prepare("SELECT booking_status, assigned_technician_id FROM bookings WHERE booking_id = ?").get(offer.booking_id) as any;
+    if (currentBooking && currentBooking.booking_status === "ASSIGNED" && currentBooking.assigned_technician_id !== technicianUserId) {
+      throw new Error("Conflict: This booking has already been accepted and assigned to another technician.");
+    }
+
     const techUser = db.prepare("SELECT full_name, phone FROM users WHERE user_id = ?").get(technicianUserId) as any;
 
     const acceptTx = db.transaction(() => {
@@ -391,20 +447,28 @@ export class AssignmentEngine {
         VALUES (?, ?, 'OFFERED', 'ASSIGNED', ?, 'Technician accepted assignment')
       `).run(randomUUID(), offer.booking_id, technicianUserId);
 
-      // 5. Notifications
-      if (offer.customer_id && offer.customer_id !== "GUEST") {
-        const custExists = db.prepare("SELECT user_id FROM users WHERE user_id = ?").get(offer.customer_id);
-        if (custExists) {
-          db.prepare(`
-            INSERT INTO notifications (notification_id, recipient_user_id, title, message, type, reference_id)
-            VALUES (?, ?, 'Assignment Confirmed!', ?, 'CONFIRMATION', ?)
-          `).run(
-            randomUUID(),
-            offer.customer_id,
-            `Specialist ${techUser?.full_name || "Assigned"} has confirmed your booking ${offer.booking_reference}. ETA: ${offer.travel_minutes} mins.`,
-            offer.booking_id
-          );
+      // 5. Notifications - Customer Notification 3 (Technician Confirmed)
+      let custUserId = offer.customer_id;
+      if (!custUserId || custUserId === "GUEST") {
+        const b = db.prepare("SELECT customer_id, customer_phone FROM bookings WHERE booking_id = ?").get(offer.booking_id) as any;
+        if (b?.customer_id && b.customer_id !== "GUEST") {
+          custUserId = b.customer_id;
+        } else if (b?.customer_phone) {
+          const u = db.prepare("SELECT user_id FROM users WHERE phone = ? AND role = 'CUSTOMER'").get(b.customer_phone) as any;
+          if (u) custUserId = u.user_id;
         }
+      }
+
+      if (custUserId && custUserId !== "GUEST") {
+        db.prepare(`
+          INSERT INTO notifications (notification_id, recipient_user_id, title, message, type, reference_id)
+          VALUES (?, ?, 'Technician confirmed', ?, 'CONFIRMATION', ?)
+        `).run(
+          randomUUID(),
+          custUserId,
+          `Your technician has accepted your service request! Technician Name: ${techUser?.full_name || "Specialist"}, Technician ID: ${technicianUserId}, Estimated Distance: ${offer.distance_km} km, Estimated Arrival: ${offer.travel_minutes} mins. Status: Technician confirmed. (Booking ID: ${offer.booking_reference})`,
+          offer.booking_id
+        );
       }
 
       db.prepare(`
@@ -442,7 +506,7 @@ export class AssignmentEngine {
     }
 
     const offer = db.prepare(`
-      SELECT jo.*, b.booking_reference, b.service_id, b.customer_id, b.problem_description,
+      SELECT jo.*, b.booking_reference, b.service_id, b.customer_id, b.customer_phone, b.problem_description,
              b.service_address, b.latitude, b.longitude, b.node_id, b.preferred_date,
              b.preferred_start_time, b.preferred_end_time, b.requested_priority, b.verified_priority,
              s.category, s.required_skills, s.required_certifications, s.estimated_duration_minutes
@@ -460,6 +524,16 @@ export class AssignmentEngine {
       throw new Error("Unauthorized: Offer does not belong to this technician.");
     }
 
+    // Idempotency: if already rejected, don't trigger duplicate reallocation
+    if (offer.status === "REJECTED") {
+      return {
+        success: true,
+        message: "Offer was already rejected.",
+        bookingId: offer.booking_id,
+        alreadyProcessed: true,
+      };
+    }
+
     const rejectTx = db.transaction(() => {
       // 1. Mark offer rejected
       db.prepare(`
@@ -470,16 +544,52 @@ export class AssignmentEngine {
         WHERE offer_id = ?
       `).run(reason.trim(), offerId);
 
-      // 2. Status history
+      // 2. Unassign technician from booking so it is NOT marked as assigned to them
+      db.prepare(`
+        UPDATE bookings
+        SET assigned_technician_id = NULL,
+            booking_status = 'PENDING',
+            updated_at = CURRENT_TIMESTAMP
+        WHERE booking_id = ?
+      `).run(offer.booking_id);
+
+      // 3. Status history
       db.prepare(`
         INSERT INTO booking_status_history (history_id, booking_id, from_status, to_status, changed_by_user_id, change_reason)
         VALUES (?, ?, 'OFFERED', 'PENDING', ?, ?)
       `).run(randomUUID(), offer.booking_id, technicianUserId, `Technician declined offer: ${reason.trim()}`);
+
+      // 4. Notification 1 to Customer: Technician unavailable, finding another suitable technician
+      let custUserId = offer.customer_id;
+      if (!custUserId || custUserId === "GUEST") {
+        if (offer.customer_phone) {
+          const u = db.prepare("SELECT user_id FROM users WHERE phone = ? AND role = 'CUSTOMER'").get(offer.customer_phone) as any;
+          if (u) custUserId = u.user_id;
+        }
+      }
+
+      if (custUserId && custUserId !== "GUEST") {
+        db.prepare(`
+          INSERT INTO notifications (notification_id, recipient_user_id, title, message, type, reference_id)
+          VALUES (?, ?, 'Finding another technician', ?, 'REALLOCATION', ?)
+        `).run(
+          randomUUID(),
+          custUserId,
+          `Your previously contacted technician is unavailable for this request. We are automatically finding another suitable technician for you. (Booking ID: ${offer.booking_reference})`,
+          offer.booking_id
+        );
+      }
     });
 
     rejectTx();
 
-    // 3. Immediately trigger automatic re-offer to NEXT suitable technician!
+    // 5. Exclude ALL technicians who have rejected this booking from future offers
+    const previousRejectors = (db.prepare(`
+      SELECT DISTINCT technician_id FROM job_offers
+      WHERE booking_id = ? AND status = 'REJECTED'
+    `).all(offer.booking_id) as any[]).map((r) => r.technician_id);
+
+    // 6. Immediately trigger automatic re-offer to NEXT suitable technician!
     const job: SchedulingJob = {
       bookingId: offer.booking_id,
       bookingReference: offer.booking_reference,
@@ -501,11 +611,130 @@ export class AssignmentEngine {
       createdAt: new Date().toISOString(),
     };
 
-    const reofferResult = this.offerJobToBestCandidate(job);
+    const reofferResult = this.offerJobToBestCandidate(
+      job,
+      DEFAULT_WEIGHTS,
+      randomUUID(),
+      { excludedTechnicianIds: previousRejectors }
+    );
 
     return {
       success: true,
       rejectedOfferId: offerId,
+      bookingId: offer.booking_id,
+      reallocation: reofferResult,
+      reallocated: reofferResult.success,
+      nextOfferId: reofferResult.offerId,
+      nextTechnicianId: reofferResult.assignedTechnicianId,
+      nextTechnicianName: reofferResult.assignedTechnicianName,
+    };
+  }
+
+  /**
+   * Expires an offer due to timeout and automatically triggers reallocation
+   */
+  public static expireJobOffer(offerId: string) {
+    const offer = db.prepare(`
+      SELECT jo.*, b.booking_reference, b.service_id, b.customer_id, b.customer_phone, b.problem_description,
+             b.service_address, b.latitude, b.longitude, b.node_id, b.preferred_date,
+             b.preferred_start_time, b.preferred_end_time, b.requested_priority, b.verified_priority,
+             s.category, s.required_skills, s.required_certifications, s.estimated_duration_minutes
+      FROM job_offers jo
+      JOIN bookings b ON jo.booking_id = b.booking_id
+      JOIN services s ON b.service_id = s.service_id
+      WHERE jo.offer_id = ?
+    `).get(offerId) as any;
+
+    if (!offer) {
+      throw new Error("Offer not found.");
+    }
+
+    if (offer.status !== "OFFERED") {
+      return { success: false, message: `Offer is already ${offer.status}` };
+    }
+
+    const expireTx = db.transaction(() => {
+      db.prepare(`
+        UPDATE job_offers
+        SET status = 'EXPIRED',
+            rejection_reason = 'Offer expired without response (Timeout)',
+            responded_at = CURRENT_TIMESTAMP
+        WHERE offer_id = ?
+      `).run(offerId);
+
+      db.prepare(`
+        UPDATE bookings
+        SET assigned_technician_id = NULL,
+            booking_status = 'PENDING',
+            updated_at = CURRENT_TIMESTAMP
+        WHERE booking_id = ?
+      `).run(offer.booking_id);
+
+      db.prepare(`
+        INSERT INTO booking_status_history (history_id, booking_id, from_status, to_status, changed_by_user_id, change_reason)
+        VALUES (?, ?, 'OFFERED', 'PENDING', 'SYSTEM_TIMEOUT', 'Offer timed out without technician response')
+      `).run(randomUUID(), offer.booking_id);
+
+      // Customer notification
+      let custUserId = offer.customer_id;
+      if (!custUserId || custUserId === "GUEST") {
+        if (offer.customer_phone) {
+          const u = db.prepare("SELECT user_id FROM users WHERE phone = ? AND role = 'CUSTOMER'").get(offer.customer_phone) as any;
+          if (u) custUserId = u.user_id;
+        }
+      }
+
+      if (custUserId && custUserId !== "GUEST") {
+        db.prepare(`
+          INSERT INTO notifications (notification_id, recipient_user_id, title, message, type, reference_id)
+          VALUES (?, ?, 'Finding another technician', ?, 'REALLOCATION', ?)
+        `).run(
+          randomUUID(),
+          custUserId,
+          `Your previously contacted technician did not respond within the time window. We are automatically finding another suitable technician for you. (Booking ID: ${offer.booking_reference})`,
+          offer.booking_id
+        );
+      }
+    });
+
+    expireTx();
+
+    const job: SchedulingJob = {
+      bookingId: offer.booking_id,
+      bookingReference: offer.booking_reference,
+      customerId: offer.customer_id,
+      serviceId: offer.service_id,
+      category: offer.category,
+      requiredSkills: JSON.parse(offer.required_skills || "[]"),
+      requiredCertifications: JSON.parse(offer.required_certifications || "[]"),
+      nodeId: offer.node_id,
+      latitude: offer.latitude,
+      longitude: offer.longitude,
+      serviceAddress: offer.service_address,
+      requestedPriority: offer.requested_priority,
+      verifiedPriority: offer.verified_priority,
+      preferredDate: offer.preferred_date,
+      preferredStartTime: offer.preferred_start_time,
+      preferredEndTime: offer.preferred_end_time,
+      estimatedDurationMinutes: offer.estimated_duration_minutes || 60,
+      createdAt: new Date().toISOString(),
+    };
+
+    const previousExcludes = (db.prepare(`
+      SELECT DISTINCT technician_id FROM job_offers
+      WHERE booking_id = ? AND status IN ('REJECTED', 'EXPIRED')
+    `).all(offer.booking_id) as any[]).map((r) => r.technician_id);
+
+    const reofferResult = this.offerJobToBestCandidate(
+      job,
+      DEFAULT_WEIGHTS,
+      randomUUID(),
+      { excludedTechnicianIds: previousExcludes }
+    );
+
+    return {
+      success: true,
+      expiredOfferId: offerId,
       bookingId: offer.booking_id,
       reallocation: reofferResult,
       reallocated: reofferResult.success,

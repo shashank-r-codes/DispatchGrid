@@ -11,6 +11,8 @@ import { bookingsRouter } from "./backend/routes/bookings.js";
 import { dispatchRouter } from "./backend/routes/dispatch.js";
 import { recoveryRouter } from "./backend/routes/recovery.js";
 import { benchmarkRouter } from "./backend/routes/benchmark.js";
+import { uploadRouter } from "./backend/routes/upload.js";
+import { notificationsRouter } from "./backend/routes/notifications.js";
 
 dotenv.config();
 
@@ -23,6 +25,9 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 // Initialize SQLite database schema and seed data
 initDatabase();
 
+// Serve profile photo uploads statically
+app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));
+
 // Mount REST API Routes
 app.use("/api/auth", authRouter);
 app.use("/api/customers", customersRouter);
@@ -32,6 +37,8 @@ app.use("/api/bookings", bookingsRouter);
 app.use("/api/dispatch", dispatchRouter);
 app.use("/api/recovery", recoveryRouter);
 app.use("/api/benchmark", benchmarkRouter);
+app.use("/api/upload", uploadRouter);
+app.use("/api/notifications", notificationsRouter);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {

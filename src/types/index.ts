@@ -28,6 +28,7 @@ export interface User {
   phone: string;
   role: UserRole;
   accountStatus: "PENDING" | "ACTIVE" | "SUSPENDED" | "REJECTED";
+  profilePictureUrl?: string;
   addresses?: CustomerAddress[];
   skills?: TechnicianSkill[];
   certifications?: TechnicianCert[];
