@@ -41,17 +41,17 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
   const [loginError, setLoginError] = useState<string>("");
 
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "offers" | "assigned" | "schedule" | "availability" | "history" | "profile"
+    "dashboard" | "offers" | "assigned" | "availability" | "history" | "profile"
   >("dashboard");
 
   // Sync activeTab with Navbar selection
   useEffect(() => {
-    if (activeSubTab && ["dashboard", "offers", "assigned", "schedule", "availability", "history", "profile"].includes(activeSubTab)) {
+    if (activeSubTab && ["dashboard", "offers", "assigned", "availability", "history", "profile"].includes(activeSubTab)) {
       setActiveTab(activeSubTab as any);
     }
   }, [activeSubTab]);
 
-  const switchTab = (tab: "dashboard" | "offers" | "assigned" | "schedule" | "availability" | "history" | "profile") => {
+  const switchTab = (tab: "dashboard" | "offers" | "assigned" | "availability" | "history" | "profile") => {
     setActiveTab(tab);
     if (onSubTabChange) onSubTabChange(tab);
   };
@@ -497,7 +497,6 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
           { id: "dashboard", label: "My Dashboard" },
           { id: "offers", label: `New Job Offers (${offers.length})` },
           { id: "assigned", label: `My Assigned Jobs (${activeJobs.length})` },
-          { id: "schedule", label: "My Schedule" },
           { id: "availability", label: "Availability" },
           { id: "history", label: `Job History (${completedJobs.length})` },
           { id: "profile", label: "Profile and Skills" },
@@ -773,29 +772,8 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
         </div>
       )}
 
-      {/* TAB 4: MY SCHEDULE & ROUTE MAP */}
-      {activeTab === "schedule" && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between text-xs text-slate-600">
-            <span>Road network itinerary and route tracking for today's assignments.</span>
-            {selectedBooking && (
-              <span className="font-mono bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200">
-                Selected: {selectedBooking.bookingReference}
-              </span>
-            )}
-          </div>
 
-          <DispatchMap
-            bookings={assignedBookings}
-            technicians={technicianProfile ? [technicianProfile] : []}
-            selectedBooking={selectedBooking}
-            onSelectBooking={(b) => setSelectedBooking(b)}
-            height="500px"
-          />
-        </div>
-      )}
-
-      {/* TAB 5: AVAILABILITY & SHIFTS */}
+{/* TAB 5: AVAILABILITY & SHIFTS */}
       {activeTab === "availability" && (
         <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-6 max-w-xl shadow-xs">
           <div>

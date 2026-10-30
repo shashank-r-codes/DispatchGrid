@@ -84,11 +84,10 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: "profile", label: "My Profile", icon: User },
   ];
 
-  // Technician Navigation Items (PART 2 Requirement)
+  // Technician Navigation Items (Schedule removed per user request)
   const technicianNavItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "offers", label: "Job Offers", icon: Bell },
-    { id: "schedule", label: "My Schedule", icon: Calendar },
     { id: "availability", label: "Availability", icon: Clock },
     { id: "history", label: "Job History", icon: CheckCircle2 },
     { id: "profile", label: "My Profile", icon: User },

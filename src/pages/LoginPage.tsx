@@ -1,4 +1,4 @@
-import { RealisticDispatchConsole } from "../components/RealisticDispatchConsole";
+import { CuteComputerMascot } from "../components/CuteComputerMascot";
 import React, { useState } from "react";
 import { Grid, Shield, User, Wrench, Lock, Mail, ArrowRight, AlertCircle, Sparkles, ChevronDown } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -121,10 +121,30 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
       {/* 2. SIDE-BY-SIDE GRID: REALISTIC CONSOLE (LEFT) + CREDENTIALS (RIGHT) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start max-w-5xl mx-auto w-full relative z-10 animate-slide-up">
-        {/* Left Side: Realistic Interactive Dispatch Console */}
+        {/* Left Side: Interactive 3D Robot Mascot (Spline Follow Cursor) */}
         <div className="lg:col-span-5 order-2 lg:order-1 flex justify-center">
-          <div className="w-full sticky top-24">
-            <RealisticDispatchConsole role={selectedRole} isSubmitting={isSubmitting} />
+          <div className="w-full sticky top-24 space-y-4">
+            <div className="bg-white/95 backdrop-blur-md p-6 sm:p-7 rounded-3xl border border-slate-200/90 shadow-2xl shadow-slate-200/50 flex flex-col items-center justify-center">
+              <CuteComputerMascot role={selectedRole} isSubmitting={isSubmitting} />
+
+              {/* Status and Highlights */}
+              <div className="mt-5 pt-4 border-t border-slate-100 w-full space-y-2">
+                <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200/70">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>Dijkstra Road Routing</span>
+                  </span>
+                  <span className="font-mono text-[10px] text-blue-600 font-bold">&lt; 1.8m Match SLA</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200/70">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-blue-500" />
+                    <span>20 Certified Specialists</span>
+                  </span>
+                  <span className="font-mono text-[10px] text-emerald-600 font-bold">100% Verified</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
