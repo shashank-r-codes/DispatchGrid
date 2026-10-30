@@ -162,6 +162,7 @@ export function initDatabase(autoSeed = true) {
       actual_end_time TEXT,
       completion_notes TEXT,
       cancellation_reason TEXT,
+      is_demo_tracking INTEGER NOT NULL DEFAULT 0,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (customer_id) REFERENCES users(user_id) ON DELETE SET NULL,
@@ -247,6 +248,48 @@ export function initDatabase(autoSeed = true) {
       FOREIGN KEY (technician_id) REFERENCES users(user_id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS technician_tracking_sessions (
+      session_id TEXT PRIMARY KEY,
+      booking_id TEXT NOT NULL UNIQUE,
+      technician_id TEXT NOT NULL,
+      tracking_status TEXT NOT NULL CHECK(tracking_status IN ('INACTIVE', 'ACCEPTED', 'TRAVELLING', 'ARRIVED', 'COMPLETED', 'CANCELLED')),
+      current_latitude REAL NOT NULL,
+      current_longitude REAL NOT NULL,
+      start_latitude REAL NOT NULL,
+      start_longitude REAL NOT NULL,
+      destination_latitude REAL NOT NULL,
+      destination_longitude REAL NOT NULL,
+      route_path TEXT,
+      route_steps TEXT,
+      total_distance_km REAL DEFAULT 0.0,
+      remaining_distance_km REAL DEFAULT 0.0,
+      estimated_travel_minutes INTEGER DEFAULT 0,
+      remaining_travel_minutes INTEGER DEFAULT 0,
+      estimated_arrival_time TEXT,
+      progress_percent REAL DEFAULT 0.0,
+      is_simulated INTEGER NOT NULL DEFAULT 1,
+      started_at TEXT,
+      arrived_at TEXT,
+      completed_at TEXT,
+      last_location_timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (booking_id) REFERENCES bookings(booking_id) ON DELETE CASCADE,
+      FOREIGN KEY (technician_id) REFERENCES users(user_id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS tracking_location_history (
+      history_id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      booking_id TEXT NOT NULL,
+      technician_id TEXT NOT NULL,
+      latitude REAL NOT NULL,
+      longitude REAL NOT NULL,
+      progress_percent REAL,
+      recorded_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (session_id) REFERENCES technician_tracking_sessions(session_id) ON DELETE CASCADE
+    );
+
     CREATE TABLE IF NOT EXISTS notifications (
       notification_id TEXT PRIMARY KEY,
       recipient_user_id TEXT NOT NULL,
@@ -274,6 +317,7 @@ export function initDatabase(autoSeed = true) {
   try { db.exec("CREATE INDEX IF NOT EXISTS idx_job_offers_booking ON job_offers(booking_id, status);"); } catch {}
   try { db.exec("ALTER TABLE job_offers ADD COLUMN attempt_number INTEGER DEFAULT 1;"); } catch {}
   try { db.exec("ALTER TABLE job_offers ADD COLUMN scheduling_run_id TEXT;"); } catch {}
+  try { db.exec("ALTER TABLE bookings ADD COLUMN is_demo_tracking INTEGER NOT NULL DEFAULT 0;"); } catch {}
 
   // Check if initial full seed is needed
   if (autoSeed) {
@@ -288,6 +332,8 @@ export function resetAndSeedDatabase(force = false) {
   if (force) {
     db.exec(`
       PRAGMA foreign_keys = OFF;
+      DROP TABLE IF EXISTS tracking_location_history;
+      DROP TABLE IF EXISTS technician_tracking_sessions;
       DROP TABLE IF EXISTS reviews;
       DROP TABLE IF EXISTS recovery_audit_logs;
       DROP TABLE IF EXISTS assignment_records;
@@ -467,6 +513,33 @@ export function resetAndSeedDatabase(force = false) {
         }
       }
     });
+
+
+    // Upgrade Amit Patel (USR_TECH_02) for Demo Tracking Mode (Electrical, AC, Plumbing)
+    const amitTechId = "USR_TECH_02";
+    db.prepare(`
+      UPDATE technician_profiles 
+      SET service_categories = 'Electrical,AC,Plumbing',
+          availability_status = 'AVAILABLE',
+          current_latitude = 12.9840,
+          current_longitude = 77.6632
+      WHERE user_id = ?
+    `).run(amitTechId);
+
+    const demoSkills = ['SK_E_01', 'SK_E_02', 'SK_E_03', 'SK_AC_01', 'SK_AC_02', 'SK_AC_03', 'SK_P_01', 'SK_P_02'];
+    for (const sk of demoSkills) {
+      insertTechSkillStmt.run(amitTechId, sk, 9);
+    }
+
+    const demoCerts = [
+      { id: 'CERT_E_01', num: 'DG-E-AMIT-901' },
+      { id: 'CERT_AC_01', num: 'DG-AC-AMIT-902' },
+      { id: 'CERT_AC_02', num: 'DG-AC-AMIT-903' },
+      { id: 'CERT_P_01', num: 'DG-P-AMIT-904' }
+    ];
+    for (const ct of demoCerts) {
+      insertTechCertStmt.run(`TC_${amitTechId}_${ct.id}`, amitTechId, ct.id, ct.num, "2029-12-31");
+    }
 
     // 6. Generate 105+ Diverse Service Jobs
     const seedJobs = generateSeedJobs(baseDate);

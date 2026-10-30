@@ -36,6 +36,8 @@ import {
 } from "lucide-react";
 import { ServiceItem, ServiceCategory, PriorityLevel } from "../types";
 import { DispatchMap } from "../components/DispatchMap";
+import { LiveTrackingMap } from "../components/LiveTrackingMap";
+import { TrackingSessionData } from "../types";
 import { METRO_NODES } from "../../backend/config/roadNetwork";
 import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
@@ -105,6 +107,13 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
   const [priority, setPriority] = useState<PriorityLevel>("NORMAL");
   const [notes, setNotes] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  // Demo Tracking Mode (Amit Patel) & Live Stream States
+  const [isDemoTracking, setIsDemoTracking] = useState<boolean>(true);
+  const [liveTrackingSession, setLiveTrackingSession] = useState<TrackingSessionData | null>(null);
+  const [lastTrackingUpdate, setLastTrackingUpdate] = useState<string>("");
+  const [isTrackingStale, setIsTrackingStale] = useState<boolean>(false);
+  const sseRef = useRef<EventSource | null>(null);
+
   const [bookingConfirmation, setBookingConfirmation] = useState<any>(null);
 
   // Tracking State
@@ -520,6 +529,70 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
       setIsSubmitting(false);
     }
   };
+
+
+  // Connect to Live Tracking Stream & Polling for Tracked Booking
+  useEffect(() => {
+    if (!trackedBooking?.bookingId) {
+      if (sseRef.current) {
+        sseRef.current.close();
+        sseRef.current = null;
+      }
+      return;
+    }
+
+    const bId = trackedBooking.bookingId;
+    let isCancelled = false;
+
+    const fetchSession = async () => {
+      try {
+        const curToken = token || localStorage.getItem("dg_token");
+        const headers: Record<string, string> = {};
+        if (curToken) headers["Authorization"] = `Bearer ${curToken}`;
+        const phoneParam = trackPhone ? `?phone=${encodeURIComponent(trackPhone.trim())}` : "";
+
+        const res = await fetch(`/api/tracking/${bId}${phoneParam}`, { headers });
+        if (res.ok) {
+          const data = await res.json();
+          if (!isCancelled && data.session) {
+            setLiveTrackingSession(data.session);
+            setLastTrackingUpdate(new Date().toLocaleTimeString());
+            setIsTrackingStale(false);
+          }
+        }
+      } catch (err) {
+        console.error("Tracking poll error:", err);
+      }
+    };
+
+    fetchSession();
+    const pollInterval = setInterval(fetchSession, 2000);
+
+    try {
+      const es = new EventSource(`/api/tracking/${bId}/stream`);
+      sseRef.current = es;
+
+      es.onmessage = (event) => {
+        try {
+          const session = JSON.parse(event.data);
+          if (!isCancelled && session) {
+            setLiveTrackingSession(session);
+            setLastTrackingUpdate(new Date().toLocaleTimeString());
+            setIsTrackingStale(false);
+          }
+        } catch {}
+      };
+    } catch {}
+
+    return () => {
+      isCancelled = true;
+      clearInterval(pollInterval);
+      if (sseRef.current) {
+        sseRef.current.close();
+        sseRef.current = null;
+      }
+    };
+  }, [trackedBooking?.bookingId, token, trackPhone]);
 
   const handleTrackSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1980,101 +2053,96 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
               </div>
 
               {/* Right Column: Live Map Tracking with Simulated Route */}
-              <div className="lg:col-span-7 space-y-3">
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-700 uppercase tracking-wider text-[11px]">
-                      Live Arrival Route Map
-                    </span>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                      (Simulated Live GPS)
+              <div className="lg:col-span-7 space-y-4">
+                {/* Live Tracking Header Bar */}
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-slate-900 uppercase tracking-wider text-xs">
+                        Live Technician Transit Tracking
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800 border border-blue-300">
+                        DEMO / SIMULATED LOCATION
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 font-mono">
+                      Last Updated: {lastTrackingUpdate || "Connecting..."}
+                    </div>
+                  </div>
+
+                  {/* Tracking Status Pill & Progress */}
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                    <span className="text-slate-500 font-semibold">Session Status:</span>
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
+                        liveTrackingSession?.trackingStatus === "COMPLETED" || trackedBooking.bookingStatus === "COMPLETED"
+                          ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                          : liveTrackingSession?.trackingStatus === "ARRIVED"
+                          ? "bg-emerald-100 text-emerald-800 border border-emerald-300 animate-bounce"
+                          : liveTrackingSession?.trackingStatus === "TRAVELLING" || trackedBooking.bookingStatus === "ON_THE_WAY"
+                          ? "bg-blue-600 text-white shadow-md shadow-blue-500/20 animate-pulse"
+                          : liveTrackingSession?.trackingStatus === "ACCEPTED" || trackedBooking.bookingStatus === "ASSIGNED"
+                          ? "bg-indigo-100 text-indigo-800 border border-indigo-300"
+                          : "bg-amber-100 text-amber-800 border border-amber-300"
+                      }`}
+                    >
+                      {liveTrackingSession?.trackingStatus === "COMPLETED" || trackedBooking.bookingStatus === "COMPLETED"
+                        ? "✓ COMPLETED"
+                        : liveTrackingSession?.trackingStatus === "ARRIVED"
+                        ? "✓ TECHNICIAN HAS ARRIVED"
+                        : liveTrackingSession?.trackingStatus === "TRAVELLING" || trackedBooking.bookingStatus === "ON_THE_WAY"
+                        ? "🚗 ON THE WAY (LIVE TRANSIT)"
+                        : liveTrackingSession?.trackingStatus === "ACCEPTED" || trackedBooking.bookingStatus === "ASSIGNED"
+                        ? "★ TECHNICIAN CONFIRMED"
+                        : "⏳ AWAITING TECHNICIAN ACCEPTANCE"}
                     </span>
                   </div>
-                  <span className="text-[11px] text-slate-400">
-                    Calculated via Real-Time Metro Transit Network
-                  </span>
+
+                  {/* Progress bar if travelling */}
+                  {(liveTrackingSession?.trackingStatus === "TRAVELLING" || (liveTrackingSession?.progressPercent || 0) > 0) && (
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[10px] font-bold text-slate-500">
+                        <span>Transit Progress</span>
+                        <span>{Math.round(liveTrackingSession?.progressPercent || 0)}%</span>
+                      </div>
+                      <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-500 ease-out"
+                          style={{ width: `${Math.min(100, liveTrackingSession?.progressPercent || 0)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Staleness Notice */}
+                  {isTrackingStale && (
+                    <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-[11px] flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                      <span>Location temporarily unavailable / Last updated at {lastTrackingUpdate || "recently"}</span>
+                    </div>
+                  )}
+
+                  {/* Distance & ETA Metrics */}
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Distance Remaining</span>
+                      <span className="text-base font-extrabold text-slate-900">
+                        {liveTrackingSession?.remainingDistanceKm !== undefined
+                          ? `${liveTrackingSession.remainingDistanceKm} km`
+                          : `${trackedBooking.distanceKm || 3.5} km`}
+                      </span>
+                    </div>
+                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Estimated Arrival (ETA)</span>
+                      <span className="text-base font-extrabold text-blue-700">
+                        {liveTrackingSession?.estimatedArrivalTime || trackedBooking.estimatedArrivalTime || `~${liveTrackingSession?.remainingTravelMinutes || trackedBooking.travelMinutes || 12} mins`}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
-                <DispatchMap
-                  bookings={[
-                    {
-                      bookingId: trackedBooking.bookingId,
-                      bookingReference: trackedBooking.bookingReference,
-                      serviceId: trackedBooking.serviceId || "SRV_DEFAULT",
-                      serviceAddress: trackedBooking.serviceAddress,
-                      serviceName: trackedBooking.serviceName,
-                      latitude: trackedBooking.customerLat,
-                      longitude: trackedBooking.customerLng,
-                      category: trackedBooking.category,
-                      bookingStatus: trackedBooking.bookingStatus,
-                      assignedTechnicianId: trackedBooking.technicianId,
-                      assignedTechnicianName: trackedBooking.technicianName,
-                      estimatedTravelTimeMinutes: trackedBooking.travelMinutes,
-                      preferredDate: trackedBooking.preferredDate,
-                      preferredStartTime: trackedBooking.preferredStartTime,
-                      preferredEndTime: trackedBooking.preferredEndTime,
-                      requestedPriority: trackedBooking.requestedPriority,
-                      verifiedPriority: trackedBooking.verifiedPriority,
-                      problemDescription: trackedBooking.problemDescription,
-                      nodeId: trackedBooking.nodeId,
-                      createdAt: trackedBooking.createdAt,
-                    },
-                  ]}
-                  technicians={
-                    trackedBooking.techLat && trackedBooking.techLng
-                      ? [
-                          {
-                            userId: trackedBooking.technicianId || "TECH",
-                            fullName: trackedBooking.technicianName || "Assigned Specialist",
-                            email: "technician@dispatchgrid.io",
-                            phone: trackedBooking.technicianPhone || "+91-98801-00000",
-                            accountStatus: "ACTIVE",
-                            experienceYears: 8,
-                            serviceCategories: [trackedBooking.category || "Electrical"],
-                            verificationStatus: "APPROVED",
-                            residentialAddress: "Bangalore",
-                            city: "Bengaluru",
-                            pincode: "560001",
-                            currentLatitude: trackedBooking.techLat,
-                            currentLongitude: trackedBooking.techLng,
-                            serviceAreas: ["CBD / Central"],
-                            availabilityStatus: "AVAILABLE",
-                            workingDays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-                            shiftStartTime: "08:00",
-                            shiftEndTime: "18:00",
-                            reservedEmergencyCapacity: "11:00-11:30",
-                            totalCompletedJobs: 140,
-                            averageRating: trackedBooking.technicianRating || 4.9,
-                            skills: [],
-                            certifications: [],
-                          },
-                        ]
-                      : []
-                  }
-                  selectedBooking={{
-                    bookingId: trackedBooking.bookingId,
-                    bookingReference: trackedBooking.bookingReference,
-                    serviceId: trackedBooking.serviceId || "SRV_DEFAULT",
-                    serviceAddress: trackedBooking.serviceAddress,
-                    serviceName: trackedBooking.serviceName,
-                    latitude: trackedBooking.customerLat,
-                    longitude: trackedBooking.customerLng,
-                    category: trackedBooking.category,
-                    bookingStatus: trackedBooking.bookingStatus,
-                    assignedTechnicianId: trackedBooking.technicianId,
-                    assignedTechnicianName: trackedBooking.technicianName,
-                    estimatedTravelTimeMinutes: trackedBooking.travelMinutes,
-                    preferredDate: trackedBooking.preferredDate,
-                    preferredStartTime: trackedBooking.preferredStartTime,
-                    preferredEndTime: trackedBooking.preferredEndTime,
-                    requestedPriority: trackedBooking.requestedPriority,
-                    verifiedPriority: trackedBooking.verifiedPriority,
-                    problemDescription: trackedBooking.problemDescription,
-                    nodeId: trackedBooking.nodeId,
-                    createdAt: trackedBooking.createdAt,
-                  }}
-                  height="480px"
-                />
+                {/* Leaflet Live Tracking Map */}
+                <LiveTrackingMap session={liveTrackingSession} height="480px" />
               </div>
             </div>
           )}

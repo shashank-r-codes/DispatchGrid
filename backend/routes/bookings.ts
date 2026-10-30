@@ -470,6 +470,106 @@ bookingsRouter.post("/", (req: Request, res: Response) => {
 
     insertTx();
 
+    const isDemoTracking = Boolean(req.body.isDemoTracking);
+
+    // If Demo Tracking Mode is active, offer EXCLUSIVELY to Amit Patel (USR_TECH_02)
+    if (isDemoTracking) {
+      const amit = db.prepare(`
+        SELECT u.user_id, u.full_name, u.email, u.phone, tp.availability_status, tp.current_latitude, tp.current_longitude
+        FROM users u
+        LEFT JOIN technician_profiles tp ON u.user_id = tp.user_id
+        WHERE u.user_id = 'USR_TECH_02' OR u.username = 'electrician2' OR u.full_name = 'Amit Patel'
+      `).get() as any;
+
+      if (!amit) {
+        return res.status(400).json({ error: "Demo technician Amit Patel not found in database." });
+      }
+
+      if (amit.availability_status === "UNAVAILABLE") {
+        return res.status(400).json({
+          error: "Demo technician Amit Patel is currently marked UNAVAILABLE. Please switch his status to AVAILABLE in his portal to receive demo offers.",
+        });
+      }
+
+      // Calculate travel time and distance for Amit
+      const travel = dijkstraService.calculateTravelBetweenCoords(
+        amit.current_latitude || 12.9840,
+        amit.current_longitude || 77.6632,
+        lat,
+        lng
+      );
+
+      const offerId = "OFFER_" + randomUUID().substring(0, 8);
+
+      const demoTx = db.transaction(() => {
+        // Set booking to OFFERED, with assigned_technician_id pointing to Amit
+        db.prepare(`
+          UPDATE bookings
+          SET booking_status = 'OFFERED',
+              assigned_technician_id = ?,
+              estimated_travel_time_minutes = ?,
+              is_demo_tracking = 1,
+              updated_at = CURRENT_TIMESTAMP
+          WHERE booking_id = ?
+        `).run(amit.user_id, travel.travelMinutes || 12, bookingId);
+
+        // Insert job offer for Amit only
+        db.prepare(`
+          INSERT INTO job_offers (offer_id, booking_id, technician_id, status, travel_minutes, distance_km, score, attempt_number)
+          VALUES (?, ?, ?, 'OFFERED', ?, ?, 0.1, 1)
+        `).run(offerId, bookingId, amit.user_id, travel.travelMinutes || 12, travel.distanceKm || 3.5);
+
+        // Audit status history
+        db.prepare(`
+          INSERT INTO booking_status_history (history_id, booking_id, from_status, to_status, changed_by_user_id, change_reason)
+          VALUES (?, ?, 'PENDING', 'OFFERED', 'DEMO_TRACKING_DISPATCHER', 'Offered exclusively to Amit Patel in DEMO TRACKING MODE')
+        `).run(randomUUID(), bookingId);
+
+        // Notify Amit Patel in-app
+        db.prepare(`
+          INSERT INTO notifications (notification_id, recipient_user_id, title, message, type, reference_id)
+          VALUES (?, ?, 'New Job Offer Received', ?, 'OFFER', ?)
+        `).run(
+          randomUUID(),
+          amit.user_id,
+          \`New \${service.category} Demo Job: \${bookingRef} at \${fullAddress}. Window: \${preferredStartTime}-\${preferredEndTime}. Travel: \${travel.travelMinutes || 12} mins. Accept or decline.\`,
+          offerId
+        );
+
+        // Notify customer in-app
+        if (customerId) {
+          db.prepare(`
+            INSERT INTO notifications (notification_id, recipient_user_id, title, message, type, reference_id)
+            VALUES (?, ?, 'Specialist Matched (Demo Mode)', ?, 'STATUS_UPDATE', ?)
+          `).run(
+            randomUUID(),
+            customerId,
+            \`We have matched certified specialist \${amit.full_name} for your booking (\${bookingRef}). Status: Awaiting technician acceptance.\`,
+            bookingId
+          );
+        }
+      });
+
+      demoTx();
+
+      return res.status(201).json({
+        message: \`Booking created! Offer dispatched exclusively to \${amit.full_name} in DEMO TRACKING MODE.\`,
+        bookingId,
+        bookingReference: bookingRef,
+        status: "OFFERED",
+        isDemoTracking: true,
+        allocation: {
+          success: true,
+          offerId,
+          assignedTechnicianId: amit.user_id,
+          assignedTechnicianName: amit.full_name,
+          estimatedTravelMinutes: travel.travelMinutes || 12,
+          distanceKm: travel.distanceKm || 3.5,
+          selectionReason: "Demo Tracking Mode: Offered exclusively to certified specialist Amit Patel.",
+        },
+      });
+    }
+
     // 2. AUTOMATIC SCHEDULING ENGINE TRIGGER (Part 3 Core Requirement)
     // Runs automatically upon booking creation! No admin button needed!
     const schedulingJob: SchedulingJob = {

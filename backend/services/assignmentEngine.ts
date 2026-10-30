@@ -6,6 +6,7 @@ import { db } from "../config/database.js";
 import { EligibilityService, EligibilityResult } from "./eligibilityService.js";
 import { SchedulingJob } from "./priorityQueue.js";
 import { randomUUID } from "crypto";
+import { trackingService } from "./trackingService.js";
 
 export interface AssignmentWeights {
   w1Travel: number; // default 0.35
@@ -484,6 +485,12 @@ export class AssignmentEngine {
 
     acceptTx();
 
+    try {
+      trackingService.getOrCreateSession(offer.booking_id, technicianUserId);
+    } catch (e) {
+      console.error("Tracking session init on accept error:", e);
+    }
+
     return {
       success: true,
       bookingId: offer.booking_id,
@@ -506,7 +513,7 @@ export class AssignmentEngine {
     }
 
     const offer = db.prepare(`
-      SELECT jo.*, b.booking_reference, b.service_id, b.customer_id, b.customer_phone, b.problem_description,
+      SELECT jo.*, b.booking_reference, b.is_demo_tracking, b.service_id, b.customer_id, b.customer_phone, b.problem_description,
              b.service_address, b.latitude, b.longitude, b.node_id, b.preferred_date,
              b.preferred_start_time, b.preferred_end_time, b.requested_priority, b.verified_priority,
              s.category, s.required_skills, s.required_certifications, s.estimated_duration_minutes
@@ -583,6 +590,46 @@ export class AssignmentEngine {
 
     rejectTx();
 
+    // If this is a Demo Tracking Mode booking, do NOT re-allocate to other technicians!
+    if (offer.is_demo_tracking) {
+      db.prepare(`
+        UPDATE bookings
+        SET booking_status = 'UNASSIGNED',
+            unassigned_reason = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE booking_id = ?
+      `).run(`Demo technician Amit Patel declined: ${reason}`, offer.booking_id);
+
+      let custUserId = offer.customer_id;
+      if (!custUserId || custUserId === "GUEST") {
+        if (offer.customer_phone) {
+          const u = db.prepare("SELECT user_id FROM users WHERE phone = ? AND role = 'CUSTOMER'").get(offer.customer_phone) as any;
+          if (u) custUserId = u.user_id;
+        }
+      }
+
+      if (custUserId && custUserId !== "GUEST") {
+        db.prepare(`
+          INSERT INTO notifications (notification_id, recipient_user_id, title, message, type, reference_id)
+          VALUES (?, ?, 'Demo Technician Declined', ?, 'DEMO_DECLINE', ?)
+        `).run(
+          randomUUID(),
+          custUserId,
+          `Demo technician Amit Patel declined your booking: "${reason}". In demo mode, this booking will not be assigned to other technicians.`,
+          offer.booking_id
+        );
+      }
+
+      return {
+        success: true,
+        bookingId: offer.booking_id,
+        bookingReference: offer.booking_reference,
+        isDemoTracking: true,
+        rejectionReason: reason,
+        message: "Demo technician Amit Patel declined. Demo tracking stopped as requested.",
+      };
+    }
+
     // 5. Exclude ALL technicians who have rejected this booking from future offers
     const previousRejectors = (db.prepare(`
       SELECT DISTINCT technician_id FROM job_offers
@@ -635,7 +682,7 @@ export class AssignmentEngine {
    */
   public static expireJobOffer(offerId: string) {
     const offer = db.prepare(`
-      SELECT jo.*, b.booking_reference, b.service_id, b.customer_id, b.customer_phone, b.problem_description,
+      SELECT jo.*, b.booking_reference, b.is_demo_tracking, b.service_id, b.customer_id, b.customer_phone, b.problem_description,
              b.service_address, b.latitude, b.longitude, b.node_id, b.preferred_date,
              b.preferred_start_time, b.preferred_end_time, b.requested_priority, b.verified_priority,
              s.category, s.required_skills, s.required_certifications, s.estimated_duration_minutes

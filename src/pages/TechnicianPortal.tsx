@@ -35,7 +35,7 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
   const { user, login, logout, refreshUserProfile } = useAuth();
   const { showToast } = useToast();
 
-  const [loginEmail, setLoginEmail] = useState<string>("electrician1@dispatchgrid.demo");
+  const [loginEmail, setLoginEmail] = useState<string>("amit.patel@dispatchgrid.demo");
   const [loginPassword, setLoginPassword] = useState<string>("12345");
   const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<string>("");
@@ -245,6 +245,72 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
     }
   };
 
+
+  // Live Tracking Journey Handlers (Section 5 & 7 Requirements)
+  const handleStartTravelling = async (bookingId: string) => {
+    try {
+      const res = await fetch(`/api/tracking/${bookingId}/start`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("dg_token")}`,
+        },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast("Journey started! Live simulated GPS broadcasting to customer.", "success");
+        fetchTechnicianData();
+      } else {
+        showToast(data.error || "Failed to start travel", "error");
+      }
+    } catch {
+      showToast("Error starting travel", "error");
+    }
+  };
+
+  const handleFastForward = async (bookingId: string) => {
+    try {
+      const res = await fetch(`/api/tracking/${bookingId}/fast-forward`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("dg_token")}`,
+        },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast("Fast-forwarded: Technician arrived at destination!", "info");
+        fetchTechnicianData();
+      } else {
+        showToast(data.error || "Failed to fast-forward", "error");
+      }
+    } catch {
+      showToast("Error fast-forwarding", "error");
+    }
+  };
+
+  const handleCompleteJobWithTracking = async (bookingId: string, notes?: string) => {
+    try {
+      const res = await fetch(`/api/tracking/${bookingId}/complete`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("dg_token")}`,
+        },
+        body: JSON.stringify({ notes: notes || completionNotes || "Service completed safely." }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast("Job completed! Tracking session finalized.", "success");
+        setCompleteBookingId(null);
+        setCompletionNotes("");
+        fetchTechnicianData();
+      } else {
+        handleUpdateStatus(bookingId, "COMPLETED", notes);
+      }
+    } catch {
+      handleUpdateStatus(bookingId, "COMPLETED", notes);
+    }
+  };
+
   // Report Sickness / Unavailability (triggers dynamic recovery)
   const handleReportUnavailability = async () => {
     const reason = prompt("Enter reason for unexpected unavailability (e.g., Medical sickness or vehicle breakdown):");
@@ -319,7 +385,7 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
 
   const SEEDED_TECH_ACCOUNTS = [
     { email: "electrician1@dispatchgrid.demo", name: "Rajesh Kumar", category: "Electrical", cert: "Wireman Grade A" },
-    { email: "electrician2@dispatchgrid.demo", name: "Amit Patel", category: "AC Specialist", cert: "EPA Universal & HVAC" },
+    { email: "amit.patel@dispatchgrid.demo", name: "Amit Patel (Demo Specialist)", category: "Electrical, AC & Plumbing", cert: "Master Wireman, EPA Universal & LMP" },
     { email: "electrician3@dispatchgrid.demo", name: "Suresh Reddy", category: "Plumbing Specialist", cert: "Master Plumber" },
     { email: "electrician4@dispatchgrid.demo", name: "Vikram Rao", category: "Electrical & AC", cert: "EPA Section 608" },
     { email: "electrician5@dispatchgrid.demo", name: "Priya Sharma", category: "Electrical", cert: "Wireman Grade A" },
@@ -628,7 +694,14 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
                   className="bg-white rounded-2xl border-2 border-amber-400/80 p-5 shadow-sm space-y-4 relative"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs font-extrabold text-slate-900">{offer.bookingReference}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-extrabold text-slate-900">{offer.bookingReference}</span>
+                      {offer.isDemoTracking && (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-black bg-blue-100 text-blue-800 border border-blue-300">
+                          DEMO MODE (AMIT PATEL)
+                        </span>
+                      )}
+                    </div>
                     <span
                       className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                         offer.verifiedPriority === "EMERGENCY"
@@ -644,21 +717,31 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
 
                   <div>
                     <div className="text-sm font-extrabold text-slate-900">{offer.serviceName}</div>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 inline-block mt-1">
-                      {offer.category}
-                    </span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">
+                        {offer.category}
+                      </span>
+                      <span className="text-xs text-slate-600 font-semibold">
+                        Customer: <strong>{offer.customerName || "Valued Customer"}</strong>
+                      </span>
+                    </div>
                     <p className="text-xs text-slate-600 mt-2">{offer.problemDescription}</p>
                   </div>
 
-                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs space-y-1 text-slate-600">
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs space-y-1.5 text-slate-600">
                     <div className="flex items-center gap-1.5 font-semibold text-slate-900">
                       <MapPin className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
                       <span className="truncate">{offer.serviceAddress}</span>
                     </div>
-                    <div className="flex items-center justify-between text-slate-500 pt-1 border-t border-slate-200">
+                    <div className="flex items-center justify-between text-slate-500 pt-1 border-t border-slate-200 text-[11px]">
                       <span>Window: <strong>{offer.preferredStartTime} - {offer.preferredEndTime}</strong></span>
                       <span className="text-emerald-700 font-bold">ETA: ~{offer.travelMinutes} mins</span>
                     </div>
+                    {offer.offeredAt && (
+                      <div className="text-[10px] text-slate-400">
+                        Offered: {new Date(offer.offeredAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    )}
                   </div>
 
                   {/* Accept & Reject Action Buttons (Part 4) */}
@@ -729,32 +812,45 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
                     </div>
                   </div>
 
-                  {/* Lifecycle Buttons (Part 9: Valid Transitions) */}
+                  {/* Lifecycle Buttons (Part 9: Valid Transitions & Live Tracking) */}
                   <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100">
                     {(b.bookingStatus === "ASSIGNED" || b.bookingStatus === "SCHEDULED") && (
                       <button
-                        onClick={() => handleUpdateStatus(b.bookingId, "ON_THE_WAY")}
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+                        onClick={() => handleStartTravelling(b.bookingId)}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-blue-600/20 cursor-pointer"
                       >
-                        <Navigation className="w-3.5 h-3.5" /> Start Travel (On The Way)
+                        <Navigation className="w-3.5 h-3.5" /> Start Travelling (Begin Live GPS)
                       </button>
                     )}
 
                     {b.bookingStatus === "ON_THE_WAY" && (
-                      <button
-                        onClick={() => handleUpdateStatus(b.bookingId, "IN_PROGRESS")}
-                        className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
-                      >
-                        <Wrench className="w-3.5 h-3.5" /> Arrived on Site (Start Work)
-                      </button>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-xs font-bold">
+                          <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping" />
+                          Live Tracking Active (Simulated GPS Broadcasting)
+                        </span>
+                        <button
+                          onClick={() => handleFastForward(b.bookingId)}
+                          className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                          title="Instant demo arrival"
+                        >
+                          <Zap className="w-3 h-3" /> Demo: Instant Arrive
+                        </button>
+                        <button
+                          onClick={() => handleUpdateStatus(b.bookingId, "IN_PROGRESS")}
+                          className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                        >
+                          <Wrench className="w-3.5 h-3.5" /> Arrived on Site (Start Work)
+                        </button>
+                      </div>
                     )}
 
-                    {b.bookingStatus === "IN_PROGRESS" && (
+                    {(b.bookingStatus === "IN_PROGRESS" || b.bookingStatus === "ARRIVED") && (
                       <button
                         onClick={() => setCompleteBookingId(b.bookingId)}
-                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-emerald-600/20 cursor-pointer"
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Complete Service
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Complete Job & Finalize
                       </button>
                     )}
 
@@ -1072,7 +1168,7 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
                 Cancel
               </button>
               <button
-                onClick={() => handleUpdateStatus(completeBookingId, "COMPLETED", completionNotes)}
+                onClick={() => handleCompleteJobWithTracking(completeBookingId, completionNotes)}
                 className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition"
               >
                 Confirm Completion

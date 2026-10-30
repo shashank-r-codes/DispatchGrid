@@ -269,3 +269,41 @@ export interface BenchmarkMetrics {
   recoveryExecutionTimeMs: number;
   constraintViolations: number;
 }
+
+export interface TrackingSessionData {
+  sessionId: string;
+  bookingId: string;
+  technicianId: string;
+  technicianName: string;
+  technicianPhone: string;
+  technicianPhoto?: string | null;
+  technicianRating: number;
+  customerName: string;
+  customerPhone: string;
+  serviceAddress: string;
+  serviceName: string;
+  category: string;
+  bookingReference: string;
+  bookingStatus: string;
+  trackingStatus: "INACTIVE" | "ACCEPTED" | "TRAVELLING" | "ARRIVED" | "COMPLETED" | "CANCELLED";
+  currentLatitude: number;
+  currentLongitude: number;
+  startLatitude: number;
+  startLongitude: number;
+  destinationLatitude: number;
+  destinationLongitude: number;
+  routePath: [number, number][];
+  routeSteps: string[];
+  totalDistanceKm: number;
+  remainingDistanceKm: number;
+  estimatedTravelMinutes: number;
+  remainingTravelMinutes: number;
+  estimatedArrivalTime: string | null;
+  progressPercent: number;
+  isSimulated: boolean;
+  startedAt: string | null;
+  arrivedAt: string | null;
+  completedAt: string | null;
+  lastLocationTimestamp: string;
+  createdAt: string;
+}

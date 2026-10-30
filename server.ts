@@ -13,6 +13,7 @@ import { recoveryRouter } from "./backend/routes/recovery.js";
 import { benchmarkRouter } from "./backend/routes/benchmark.js";
 import { uploadRouter } from "./backend/routes/upload.js";
 import { notificationsRouter } from "./backend/routes/notifications.js";
+import { trackingRouter } from "./backend/routes/tracking.js";
 
 dotenv.config();
 
@@ -39,6 +40,7 @@ app.use("/api/recovery", recoveryRouter);
 app.use("/api/benchmark", benchmarkRouter);
 app.use("/api/upload", uploadRouter);
 app.use("/api/notifications", notificationsRouter);
+app.use("/api/tracking", trackingRouter);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
