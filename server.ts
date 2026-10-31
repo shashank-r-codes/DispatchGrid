@@ -14,6 +14,7 @@ import { benchmarkRouter } from "./backend/routes/benchmark.js";
 import { uploadRouter } from "./backend/routes/upload.js";
 import { notificationsRouter } from "./backend/routes/notifications.js";
 import { trackingRouter } from "./backend/routes/tracking.js";
+import { AssignmentEngine } from "./backend/services/assignmentEngine.js";
 
 dotenv.config();
 
@@ -25,6 +26,17 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Initialize SQLite database schema and seed data
 initDatabase();
+
+// Background 2-minute decision timer sweep:
+// Checks all pending offers across the workforce. If an offer reaches 2 minutes without accept/reject,
+// it automatically expires and reassigns the job to the next nearest qualified technician.
+setInterval(() => {
+  try {
+    AssignmentEngine.checkAndExpireTimedOutOffers(120);
+  } catch (err) {
+    // ignore
+  }
+}, 2000);
 
 // Serve profile photo uploads statically
 app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));

@@ -58,6 +58,35 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
 
   const [offers, setOffers] = useState<JobOffer[]>([]);
   const [assignedBookings, setAssignedBookings] = useState<Booking[]>([]);
+
+  // 1-second live decision timer ticker (2 minutes)
+  const [currentTime, setCurrentTime] = useState<number>(Date.now());
+  useEffect(() => {
+    const ticker = setInterval(() => setCurrentTime(Date.now()), 1000);
+    return () => clearInterval(ticker);
+  }, []);
+
+  const expiringOffersRef = useRef<Set<string>>(new Set());
+
+  const handleOfferTimeout = async (offerId: string, bookingRef: string) => {
+    if (expiringOffersRef.current.has(offerId)) return;
+    expiringOffersRef.current.add(offerId);
+
+    try {
+      const res = await fetch(`/api/technicians/offers/${offerId}/expire`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        showToast(
+          `Decision timer expired for ${bookingRef}. Job automatically reassigned to next nearest technician.`,
+          "warning"
+        );
+        fetchTechnicianData();
+      }
+    } catch (err) {
+      console.error("Auto-expire failed:", err);
+    }
+  };
   const [technicianProfile, setTechnicianProfile] = useState<Technician | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -126,6 +155,10 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
 
   useEffect(() => {
     fetchTechnicianData();
+    const poll = setInterval(() => {
+      fetchTechnicianData();
+    }, 3000);
+    return () => clearInterval(poll);
   }, [user]);
 
   // Handle Offer Accept (Part 4)
@@ -611,23 +644,41 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
             </div>
           </div>
 
-          {/* New Offer Callout Banner if offers pending */}
-          {offers.length > 0 && (
-            <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-white p-5 rounded-2xl shadow-md flex items-center justify-between">
-              <div>
-                <h3 className="font-extrabold text-base">You have {offers.length} pending job offer{offers.length > 1 ? "s" : ""}!</h3>
-                <p className="text-xs text-amber-100 mt-0.5">
-                  Review customer service details, appointment window, and estimated transit time before accepting or rejecting.
-                </p>
+          {/* New Offer Callout Banner with Live 2-Minute Decision Timer */}
+          {offers.length > 0 && (() => {
+            const firstOffer = offers[0];
+            const offTime = firstOffer.offeredAt ? new Date(firstOffer.offeredAt).getTime() : currentTime;
+            const diff = Math.max(0, Math.floor((offTime + 120 * 1000 - currentTime) / 1000));
+            const m = Math.floor(diff / 60);
+            const s = diff % 60;
+            const timeStr = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+
+            return (
+              <div className={`text-white p-5 rounded-2xl shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-colors ${
+                diff <= 30
+                  ? "bg-gradient-to-r from-rose-600 to-red-600 animate-pulse"
+                  : "bg-gradient-to-r from-amber-500 to-amber-600"
+              }`}>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-extrabold text-base">You have {offers.length} pending job offer{offers.length > 1 ? "s" : ""}!</h3>
+                    <span className="font-mono text-xs font-black bg-white/20 px-2 py-0.5 rounded-lg border border-white/30">
+                      ⏳ {timeStr}
+                    </span>
+                  </div>
+                  <p className="text-xs text-amber-100 mt-0.5">
+                    2-minute decision timer running: accept or decline before it automatically reassigns to the next nearest person.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActiveTab("offers")}
+                  className="px-4 py-2 bg-white text-amber-900 font-extrabold rounded-xl text-xs hover:bg-amber-50 transition shadow-sm cursor-pointer whitespace-nowrap"
+                >
+                  Review Offers ({timeStr})
+                </button>
               </div>
-              <button
-                onClick={() => setActiveTab("offers")}
-                className="px-4 py-2 bg-white text-amber-900 font-extrabold rounded-xl text-xs hover:bg-amber-50 transition"
-              >
-                Review Offers
-              </button>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Next Immediate Assignment */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4 shadow-xs">
@@ -688,11 +739,75 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {offers.map((offer) => (
+              {offers.map((offer) => {
+                const offeredTime = offer.offeredAt ? new Date(offer.offeredAt).getTime() : currentTime;
+                const expiresTime = offeredTime + 120 * 1000;
+                const diffSec = Math.max(0, Math.floor((expiresTime - currentTime) / 1000));
+                const mins = Math.floor(diffSec / 60);
+                const secs = diffSec % 60;
+                const formattedCountdown = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+                const timerPercent = Math.min(100, Math.max(0, (diffSec / 120) * 100));
+
+                // Auto-trigger reallocation when 2-minute window elapses
+                if (diffSec <= 0 && !expiringOffersRef.current.has(offer.offerId)) {
+                  handleOfferTimeout(offer.offerId, offer.bookingReference || "Booking");
+                }
+
+                return (
                 <div
                   key={offer.offerId}
                   className="bg-white rounded-2xl border-2 border-amber-400/80 p-5 shadow-sm space-y-4 relative"
                 >
+                  {/* 2-Minute Decision Timer Header */}
+                  <div className={`p-3 rounded-xl border text-xs font-bold transition-all ${
+                    diffSec <= 30
+                      ? "bg-rose-50 border-rose-300 text-rose-800 animate-pulse shadow-xs"
+                      : diffSec <= 60
+                      ? "bg-amber-50 border-amber-300 text-amber-800 shadow-xs"
+                      : "bg-blue-50 border-blue-200 text-blue-900 shadow-xs"
+                  }`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <Clock className={`w-4 h-4 ${diffSec <= 30 ? "text-rose-600 animate-spin-slow" : "text-blue-600"}`} />
+                        <span className="text-[11px] font-extrabold uppercase tracking-wider">
+                          {diffSec > 0 ? "2-Min Decision Timer:" : "Time Expired:"}
+                        </span>
+                        <span className="font-mono text-sm font-black tracking-wider px-2 py-0.5 rounded-lg bg-white/80 border border-slate-200/80 shadow-2xs">
+                          {formattedCountdown}
+                        </span>
+                      </div>
+
+                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md ${
+                        diffSec <= 30
+                          ? "bg-rose-200 text-rose-900"
+                          : diffSec <= 60
+                          ? "bg-amber-200 text-amber-900"
+                          : "bg-blue-200 text-blue-900"
+                      }`}>
+                        {diffSec > 0 ? "Auto-Reassigns on 00:00" : "Reassigning..."}
+                      </span>
+                    </div>
+
+                    {/* Smooth countdown progress bar */}
+                    <div className="mt-2 w-full bg-slate-200/80 h-1.5 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-1000 ${
+                          diffSec <= 30
+                            ? "bg-rose-500"
+                            : diffSec <= 60
+                            ? "bg-amber-500"
+                            : "bg-blue-600"
+                        }`}
+                        style={{ width: `${timerPercent}%` }}
+                      />
+                    </div>
+
+                    <div className="mt-1 flex items-center justify-between text-[10px] text-slate-500 font-semibold">
+                      <span>Requested: {new Date(offeredTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
+                      <span className="text-purple-700 font-bold">Target: Next Nearest Person</span>
+                    </div>
+                  </div>
+
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-xs font-extrabold text-slate-900">{offer.bookingReference}</span>
@@ -762,7 +877,7 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
                     </button>
                   </div>
                 </div>
-              ))}
+              );})}
             </div>
           )}
         </div>

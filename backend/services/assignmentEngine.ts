@@ -767,6 +767,26 @@ export class AssignmentEngine {
       createdAt: new Date().toISOString(),
     };
 
+    // If demo tracking mode was active, strictly isolate and do not reassign to regular technicians
+    if (offer.is_demo_tracking) {
+      db.prepare(`
+        UPDATE bookings
+        SET booking_status = 'UNASSIGNED',
+            unassigned_reason = 'Demo technician Amit Patel did not respond within the 2-minute decision window',
+            updated_at = CURRENT_TIMESTAMP
+        WHERE booking_id = ?
+      `).run(offer.booking_id);
+
+      return {
+        success: true,
+        expiredOfferId: offerId,
+        bookingId: offer.booking_id,
+        isDemoTracking: true,
+        reallocated: false,
+        message: "Demo technician did not accept within 2-minute decision window. Demo tracking ended.",
+      };
+    }
+
     const previousExcludes = (db.prepare(`
       SELECT DISTINCT technician_id FROM job_offers
       WHERE booking_id = ? AND status IN ('REJECTED', 'EXPIRED')
@@ -789,6 +809,39 @@ export class AssignmentEngine {
       nextTechnicianId: reofferResult.assignedTechnicianId,
       nextTechnicianName: reofferResult.assignedTechnicianName,
     };
+  }
+
+  /**
+   * Sweeps all pending job offers across the workforce.
+   * If any offer has exceeded the 2-minute decision window (120 seconds),
+   * automatically expires it and reassigns the booking to the next nearest qualified technician.
+   */
+  public static checkAndExpireTimedOutOffers(timeoutSeconds: number = 120) {
+    try {
+      const activeOffers = db.prepare(`
+        SELECT jo.offer_id, jo.booking_id, jo.technician_id, jo.offered_at, b.booking_reference, b.is_demo_tracking
+        FROM job_offers jo
+        JOIN bookings b ON jo.booking_id = b.booking_id
+        WHERE jo.status = 'OFFERED'
+      `).all() as any[];
+
+      const results = [];
+      const now = Date.now();
+      for (const off of activeOffers) {
+        if (!off.offered_at) continue;
+        const offerTime = new Date(off.offered_at).getTime();
+        // Check if 2 minutes (120s) elapsed
+        if (now - offerTime >= timeoutSeconds * 1000) {
+          console.log(`[2-Minute Timer Reached] Offer ${off.offer_id} (${off.booking_reference}) timed out without response. Auto-reassigning to next nearest technician...`);
+          const res = this.expireJobOffer(off.offer_id);
+          results.push(res);
+        }
+      }
+      return results;
+    } catch (err: any) {
+      console.error("[Auto-Timeout Check Error]", err.message);
+      return [];
+    }
   }
 
   /**

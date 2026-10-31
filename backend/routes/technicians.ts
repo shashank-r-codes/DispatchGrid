@@ -1,4 +1,4 @@
-import { Router, Response } from "express";
+import { Router, Response, Request } from "express";
 import { db } from "../config/database.js";
 import { authenticateToken, requireRole, AuthenticatedRequest } from "../services/authService.js";
 import { RecoveryEngine } from "../services/recoveryEngine.js";
@@ -271,10 +271,13 @@ techniciansRouter.put("/my/profile", authenticateToken, requireRole("TECHNICIAN"
   }
 });
 
-// View technician's own pending job offers
+// View technician's own pending job offers (with 2-Minute Decision Timer)
 techniciansRouter.get("/my/offers", authenticateToken, requireRole("TECHNICIAN", "ADMIN"), (req: AuthenticatedRequest, res: Response) => {
   try {
     const techId = req.user!.userId;
+
+    // Run sweep: If any offer exceeded 2 minutes (120s), automatically reassign to next nearest candidate
+    AssignmentEngine.checkAndExpireTimedOutOffers(120);
 
     const offers = db.prepare(`
       SELECT 
@@ -309,7 +312,20 @@ techniciansRouter.get("/my/offers", authenticateToken, requireRole("TECHNICIAN",
       ORDER BY jo.offered_at DESC
     `).all(techId) as any[];
 
-    return res.json({ offers });
+    // Enrich each offer with 2-minute decision timer metadata (120 seconds)
+    const enrichedOffers = offers.map((o) => {
+      const offeredTime = o.offeredAt ? new Date(o.offeredAt).getTime() : Date.now();
+      const expiresAt = new Date(offeredTime + 120 * 1000).toISOString();
+      const remainingSeconds = Math.max(0, Math.floor((offeredTime + 120 * 1000 - Date.now()) / 1000));
+      return {
+        ...o,
+        timeoutSeconds: 120,
+        expiresAt,
+        remainingSeconds,
+      };
+    });
+
+    return res.json({ offers: enrichedOffers });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
@@ -353,7 +369,7 @@ techniciansRouter.post("/offers/:offerId/reject", authenticateToken, requireRole
 });
 
 // Expire a job offer (timeout) -> automatically triggers re-offer to next eligible tech
-techniciansRouter.post("/offers/:offerId/expire", authenticateToken, (req: AuthenticatedRequest, res: Response) => {
+techniciansRouter.post("/offers/:offerId/expire", (req: Request, res: Response) => {
   try {
     const offerId = req.params.offerId;
     const result = AssignmentEngine.expireJobOffer(offerId);
