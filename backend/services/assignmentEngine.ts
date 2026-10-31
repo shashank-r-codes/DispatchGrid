@@ -256,11 +256,11 @@ export class AssignmentEngine {
     const attemptNumber = (prevOffersRow ? prevOffersRow.count : 0) + 1;
 
     const offerTx = db.transaction(() => {
-      // Create offer record with attempt_number and runId
+      // Create offer record with attempt_number, runId, and explicit UTC ISO offered_at timestamp
       db.prepare(`
-        INSERT INTO job_offers (offer_id, booking_id, technician_id, status, travel_minutes, distance_km, score, attempt_number, scheduling_run_id)
-        VALUES (?, ?, ?, 'OFFERED', ?, ?, ?, ?, ?)
-      `).run(offerId, job.bookingId, winner.technicianId, winner.travelMinutes, winner.distanceKm, winner.assignmentCost, attemptNumber, runId);
+        INSERT INTO job_offers (offer_id, booking_id, technician_id, status, travel_minutes, distance_km, score, attempt_number, scheduling_run_id, offered_at)
+        VALUES (?, ?, ?, 'OFFERED', ?, ?, ?, ?, ?, ?)
+      `).run(offerId, job.bookingId, winner.technicianId, winner.travelMinutes, winner.distanceKm, winner.assignmentCost, attemptNumber, runId, new Date().toISOString());
 
       // Update booking status to OFFERED
       db.prepare(`
@@ -767,24 +767,14 @@ export class AssignmentEngine {
       createdAt: new Date().toISOString(),
     };
 
-    // If demo tracking mode was active, strictly isolate and do not reassign to regular technicians
+    // If demo tracking mode was active, release demo isolation so that the next nearest technician can be contacted immediately
     if (offer.is_demo_tracking) {
       db.prepare(`
         UPDATE bookings
-        SET booking_status = 'UNASSIGNED',
-            unassigned_reason = 'Demo technician Amit Patel did not respond within the 2-minute decision window',
+        SET is_demo_tracking = 0,
             updated_at = CURRENT_TIMESTAMP
         WHERE booking_id = ?
       `).run(offer.booking_id);
-
-      return {
-        success: true,
-        expiredOfferId: offerId,
-        bookingId: offer.booking_id,
-        isDemoTracking: true,
-        reallocated: false,
-        message: "Demo technician did not accept within 2-minute decision window. Demo tracking ended.",
-      };
     }
 
     const previousExcludes = (db.prepare(`
@@ -829,7 +819,12 @@ export class AssignmentEngine {
       const now = Date.now();
       for (const off of activeOffers) {
         if (!off.offered_at) continue;
-        const offerTime = new Date(off.offered_at).getTime();
+        let s = String(off.offered_at).trim();
+        if (s.includes(" ") && !s.includes("T")) s = s.replace(" ", "T") + "Z";
+        else if (!s.endsWith("Z") && !s.includes("+") && !s.includes("-", 10)) s += "Z";
+        const offerTime = new Date(s).getTime();
+        if (isNaN(offerTime)) continue;
+
         // Check if 2 minutes (120s) elapsed
         if (now - offerTime >= timeoutSeconds * 1000) {
           console.log(`[2-Minute Timer Reached] Offer ${off.offer_id} (${off.booking_reference}) timed out without response. Auto-reassigning to next nearest technician...`);

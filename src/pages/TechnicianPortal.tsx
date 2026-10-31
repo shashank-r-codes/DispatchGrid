@@ -68,6 +68,16 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
 
   const expiringOffersRef = useRef<Set<string>>(new Set());
 
+  // Helper to accurately parse SQLite / ISO UTC timestamps across all browsers and timezones
+  const parseOfferTime = (dateStr?: string | null): number => {
+    if (!dateStr) return currentTime;
+    let s = String(dateStr).trim();
+    if (s.includes(" ") && !s.includes("T")) s = s.replace(" ", "T") + "Z";
+    else if (!s.endsWith("Z") && !s.includes("+") && !s.includes("-", 10)) s += "Z";
+    const t = new Date(s).getTime();
+    return isNaN(t) ? currentTime : t;
+  };
+
   const handleOfferTimeout = async (offerId: string, bookingRef: string) => {
     if (expiringOffersRef.current.has(offerId)) return;
     expiringOffersRef.current.add(offerId);
@@ -78,15 +88,30 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
       });
       if (res.ok) {
         showToast(
-          `Decision timer expired for ${bookingRef}. Job automatically reassigned to next nearest technician.`,
+          `Decision timer expired for ${bookingRef}. Job immediately reassigned to next nearest technician!`,
           "warning"
         );
-        fetchTechnicianData();
+        await fetchTechnicianData();
       }
     } catch (err) {
       console.error("Auto-expire failed:", err);
     }
   };
+
+  // Live Decision Timer Monitor:
+  // Runs every second across all tabs. The exact second the 2-minute (120s) window hits 0,
+  // immediately expires the offer and triggers instant automatic reassignment to next nearest person.
+  useEffect(() => {
+    if (!offers || offers.length === 0) return;
+    for (const offer of offers) {
+      const offeredTime = parseOfferTime(offer.offeredAt);
+      const expiresTime = offeredTime + 120 * 1000;
+      const diffSec = Math.floor((expiresTime - currentTime) / 1000);
+      if (diffSec <= 0 && !expiringOffersRef.current.has(offer.offerId)) {
+        handleOfferTimeout(offer.offerId, offer.bookingReference || "Booking");
+      }
+    }
+  }, [currentTime, offers]);
   const [technicianProfile, setTechnicianProfile] = useState<Technician | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -647,7 +672,7 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
           {/* New Offer Callout Banner with Live 2-Minute Decision Timer */}
           {offers.length > 0 && (() => {
             const firstOffer = offers[0];
-            const offTime = firstOffer.offeredAt ? new Date(firstOffer.offeredAt).getTime() : currentTime;
+            const offTime = parseOfferTime(firstOffer.offeredAt);
             const diff = Math.max(0, Math.floor((offTime + 120 * 1000 - currentTime) / 1000));
             const m = Math.floor(diff / 60);
             const s = diff % 60;
@@ -740,18 +765,13 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {offers.map((offer) => {
-                const offeredTime = offer.offeredAt ? new Date(offer.offeredAt).getTime() : currentTime;
+                const offeredTime = parseOfferTime(offer.offeredAt);
                 const expiresTime = offeredTime + 120 * 1000;
                 const diffSec = Math.max(0, Math.floor((expiresTime - currentTime) / 1000));
                 const mins = Math.floor(diffSec / 60);
                 const secs = diffSec % 60;
                 const formattedCountdown = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
                 const timerPercent = Math.min(100, Math.max(0, (diffSec / 120) * 100));
-
-                // Auto-trigger reallocation when 2-minute window elapses
-                if (diffSec <= 0 && !expiringOffersRef.current.has(offer.offerId)) {
-                  handleOfferTimeout(offer.offerId, offer.bookingReference || "Booking");
-                }
 
                 return (
                 <div

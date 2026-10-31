@@ -28,7 +28,7 @@ async function runDemoTests() {
 
   // 2. Test Customer Booking Creation in DEMO TRACKING MODE
   const bookingId = "DEMO_BK_" + randomUUID().substring(0, 6);
-  const bookingRef = "DG-DEMO-909";
+  const bookingRef = "DG-DEMO-" + randomUUID().substring(0, 6);
   const customerId = "USR_CUST_DEMO";
   const serviceId = "SRV_AC_01"; // AC maintenance
 
@@ -46,7 +46,7 @@ async function runDemoTests() {
 
   insertBooking.run(bookingId, bookingRef, customerId, serviceId, amit.user_id);
 
-  const offerId = "OFFER_DEMO_01";
+  const offerId = "OFFER_DEMO_" + randomUUID().substring(0, 6);
   db.prepare(`
     INSERT INTO job_offers (offer_id, booking_id, technician_id, status, travel_minutes, distance_km, score, attempt_number)
     VALUES (?, ?, ?, 'OFFERED', 12, 3.4, 0.1, 1)
@@ -106,6 +106,7 @@ async function runDemoTests() {
 
   // 10. Test Rejection Isolation: When demo booking is declined, it is NOT rerouted to other technicians
   const rejectBookingId = "DEMO_REJECT_" + randomUUID().substring(0, 6);
+  const rejectBookingRef = "DG-DEMO-REJ-" + randomUUID().substring(0, 6);
   db.prepare(`
     INSERT INTO bookings (
       booking_id, booking_reference, customer_id, customer_name, customer_phone,
@@ -113,12 +114,12 @@ async function runDemoTests() {
       problem_description, service_address, latitude, longitude, node_id,
       preferred_date, preferred_start_time, preferred_end_time, is_demo_tracking,
       assigned_technician_id, estimated_travel_time_minutes
-    ) VALUES (?, 'DG-DEMO-REJ', 'USR_CUST_DEMO', 'Demo Customer', '+91-98800-00001',
+    ) VALUES (?, ?, 'USR_CUST_DEMO', 'Demo Customer', '+91-98800-00001',
               'SRV_E_01', 'NORMAL', 'NORMAL', 'OFFERED', 'Wiring issue', 'Koramangala, Bengaluru',
               12.9352, 77.6245, 'NODE_SOUTH', '2026-11-01', '14:00', '15:00', 1, ?, 15)
-  `).run(rejectBookingId, amit.user_id);
+  `).run(rejectBookingId, rejectBookingRef, amit.user_id);
 
-  const rejectOfferId = "OFFER_DEMO_REJ";
+  const rejectOfferId = "OFFER_DEMO_REJ_" + randomUUID().substring(0, 6);
   db.prepare(`
     INSERT INTO job_offers (offer_id, booking_id, technician_id, status, travel_minutes, distance_km, score, attempt_number)
     VALUES (?, ?, ?, 'OFFERED', 15, 4.2, 0.1, 1)

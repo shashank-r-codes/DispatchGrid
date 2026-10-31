@@ -587,11 +587,11 @@ bookingsRouter.post("/", (req: Request, res: Response) => {
           WHERE booking_id = ?
         `).run(amit.user_id, travel.travelMinutes || 12, bookingId);
 
-        // Insert job offer for Amit only
+        // Insert job offer for Amit only with explicit UTC timestamp for the 2-minute decision timer
         db.prepare(`
-          INSERT INTO job_offers (offer_id, booking_id, technician_id, status, travel_minutes, distance_km, score, attempt_number)
-          VALUES (?, ?, ?, 'OFFERED', ?, ?, 0.1, 1)
-        `).run(offerId, bookingId, amit.user_id, travel.travelMinutes || 12, travel.distanceKm || 3.5);
+          INSERT INTO job_offers (offer_id, booking_id, technician_id, status, travel_minutes, distance_km, score, attempt_number, offered_at)
+          VALUES (?, ?, ?, 'OFFERED', ?, ?, 0.1, 1, ?)
+        `).run(offerId, bookingId, amit.user_id, travel.travelMinutes || 12, travel.distanceKm || 3.5, new Date().toISOString());
 
         // Audit status history
         db.prepare(`

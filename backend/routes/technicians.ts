@@ -312,13 +312,17 @@ techniciansRouter.get("/my/offers", authenticateToken, requireRole("TECHNICIAN",
       ORDER BY jo.offered_at DESC
     `).all(techId) as any[];
 
-    // Enrich each offer with 2-minute decision timer metadata (120 seconds)
+    // Enrich each offer with 2-minute decision timer metadata (120 seconds) with timezone safety
     const enrichedOffers = offers.map((o) => {
-      const offeredTime = o.offeredAt ? new Date(o.offeredAt).getTime() : Date.now();
+      let s = String(o.offeredAt || "").trim();
+      if (s.includes(" ") && !s.includes("T")) s = s.replace(" ", "T") + "Z";
+      else if (s && !s.endsWith("Z") && !s.includes("+") && !s.includes("-", 10)) s += "Z";
+      const offeredTime = s ? new Date(s).getTime() : Date.now();
       const expiresAt = new Date(offeredTime + 120 * 1000).toISOString();
       const remainingSeconds = Math.max(0, Math.floor((offeredTime + 120 * 1000 - Date.now()) / 1000));
       return {
         ...o,
+        offeredAt: new Date(offeredTime).toISOString(),
         timeoutSeconds: 120,
         expiresAt,
         remainingSeconds,
