@@ -696,6 +696,16 @@ export class AssignmentEngine {
       throw new Error("Offer not found.");
     }
 
+    // Idempotency: if already expired by background sweep, return success immediately
+    if (offer.status === "EXPIRED") {
+      return {
+        success: true,
+        message: "Offer was already expired.",
+        bookingId: offer.booking_id,
+        alreadyProcessed: true,
+      };
+    }
+
     if (offer.status !== "OFFERED") {
       return { success: false, message: `Offer is already ${offer.status}` };
     }

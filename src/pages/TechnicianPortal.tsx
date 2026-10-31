@@ -78,21 +78,45 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
     return isNaN(t) ? currentTime : t;
   };
 
+  // Filter active valid offers where remaining decision window > 0.
+  // The exact millisecond diffSec becomes 0, the offer vanishes from this portal immediately,
+  // matching the instantaneous feedback of clicking "Decline / Reject".
+  const validOffers = useMemo(() => {
+    return offers.filter((o) => {
+      const offeredTime = parseOfferTime(o.offeredAt);
+      const remainingMs = offeredTime + 120 * 1000 - currentTime;
+      return remainingMs > 0;
+    });
+  }, [offers, currentTime]);
+
   const handleOfferTimeout = async (offerId: string, bookingRef: string) => {
     if (expiringOffersRef.current.has(offerId)) return;
     expiringOffersRef.current.add(offerId);
 
+    // Optimistically remove the expired offer immediately from local state
+    // EXACT SAME instant feedback as clicking "Decline / Reject"
+    setOffers((prev) => prev.filter((o) => o.offerId !== offerId));
+
     try {
-      const res = await fetch(`/api/technicians/offers/${offerId}/expire`, {
+      const token = localStorage.getItem("dg_token");
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      await fetch(`/api/technicians/offers/${offerId}/expire`, {
         method: "POST",
+        headers,
       });
-      if (res.ok) {
-        showToast(
-          `Decision timer expired for ${bookingRef}. Job immediately reassigned to next nearest technician!`,
-          "warning"
-        );
-        await fetchTechnicianData();
-      }
+
+      showToast(
+        `Decision timer expired for ${bookingRef}. Job immediately reassigned to next nearest technician!`,
+        "info"
+      );
+
+      // Instantly notify Customer Portal and peer windows in real time
+      window.dispatchEvent(new Event("dg_booking_reassigned"));
+      localStorage.setItem("dg_reassigned_at", Date.now().toString());
+
+      await fetchTechnicianData();
     } catch (err) {
       console.error("Auto-expire failed:", err);
     }
@@ -588,13 +612,13 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
 
         {/* Action Triggers */}
         <div className="flex items-center gap-2.5">
-          {offers.length > 0 && (
+          {validOffers.length > 0 && (
             <button
               onClick={() => setActiveTab("offers")}
               className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-amber-500/20 animate-pulse"
             >
               <Zap className="w-4 h-4 fill-white" />
-              {offers.length} New Offer{offers.length > 1 ? "s" : ""}
+              {validOffers.length} New Offer{validOffers.length > 1 ? "s" : ""}
             </button>
           )}
 
@@ -619,7 +643,7 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
       <div className="flex border-b border-slate-200 text-xs font-bold gap-4 sm:gap-6 overflow-x-auto pb-1">
         {[
           { id: "dashboard", label: "My Dashboard" },
-          { id: "offers", label: `New Job Offers (${offers.length})` },
+          { id: "offers", label: `New Job Offers (${validOffers.length})` },
           { id: "assigned", label: `My Assigned Jobs (${activeJobs.length})` },
           { id: "availability", label: "Availability" },
           { id: "history", label: `Job History (${completedJobs.length})` },
@@ -646,7 +670,7 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
               <div className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Pending Offers</div>
-              <div className="text-2xl font-extrabold text-amber-600 mt-1">{offers.length}</div>
+              <div className="text-2xl font-extrabold text-amber-600 mt-1">{validOffers.length}</div>
               <div className="text-[11px] text-slate-400 mt-0.5">Awaiting accept/reject</div>
             </div>
 
@@ -670,8 +694,8 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
           </div>
 
           {/* New Offer Callout Banner with Live 2-Minute Decision Timer */}
-          {offers.length > 0 && (() => {
-            const firstOffer = offers[0];
+          {validOffers.length > 0 && (() => {
+            const firstOffer = validOffers[0];
             const offTime = parseOfferTime(firstOffer.offeredAt);
             const diff = Math.max(0, Math.floor((offTime + 120 * 1000 - currentTime) / 1000));
             const m = Math.floor(diff / 60);
@@ -686,7 +710,7 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
               }`}>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-extrabold text-base">You have {offers.length} pending job offer{offers.length > 1 ? "s" : ""}!</h3>
+                    <h3 className="font-extrabold text-base">You have {validOffers.length} pending job offer{validOffers.length > 1 ? "s" : ""}!</h3>
                     <span className="font-mono text-xs font-black bg-white/20 px-2 py-0.5 rounded-lg border border-white/30">
                       ⏳ {timeStr}
                     </span>
@@ -749,14 +773,14 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700">
-              Pending Job Offers ({offers.length})
+              Pending Job Offers ({validOffers.length})
             </h2>
             <span className="text-xs text-slate-500">
               Accepting confirms assignment atomically. Declining prompts a reason and automatically reroutes to the next specialist.
             </span>
           </div>
 
-          {offers.length === 0 ? (
+          {validOffers.length === 0 ? (
             <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-12 text-center text-xs text-slate-400 space-y-2">
               <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
               <div className="font-semibold text-slate-700">All caught up! No pending offers.</div>
@@ -764,7 +788,7 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {offers.map((offer) => {
+              {validOffers.map((offer) => {
                 const offeredTime = parseOfferTime(offer.offeredAt);
                 const expiresTime = offeredTime + 120 * 1000;
                 const diffSec = Math.max(0, Math.floor((expiresTime - currentTime) / 1000));
@@ -790,7 +814,7 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
                       <div className="flex items-center gap-1.5">
                         <Clock className={`w-4 h-4 ${diffSec <= 30 ? "text-rose-600 animate-spin-slow" : "text-blue-600"}`} />
                         <span className="text-[11px] font-extrabold uppercase tracking-wider">
-                          {diffSec > 0 ? "2-Min Decision Timer:" : "Time Expired:"}
+                          2-Min Decision Timer:
                         </span>
                         <span className="font-mono text-sm font-black tracking-wider px-2 py-0.5 rounded-lg bg-white/80 border border-slate-200/80 shadow-2xs">
                           {formattedCountdown}
@@ -804,7 +828,7 @@ export const TechnicianPortal: React.FC<TechnicianPortalProps> = ({ onBack, acti
                           ? "bg-amber-200 text-amber-900"
                           : "bg-blue-200 text-blue-900"
                       }`}>
-                        {diffSec > 0 ? "Auto-Reassigns on 00:00" : "Reassigning..."}
+                        Auto-Reassigns on 00:00
                       </span>
                     </div>
 

@@ -199,8 +199,16 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
     }
   };
 
-  // Periodic Auto-Refresh: Real-time status updates on acceptance/rejection/reallocation
+  // Periodic Auto-Refresh & Instant Event-Driven Updates on acceptance/rejection/reallocation
   useEffect(() => {
+    const handleInstantReassign = () => {
+      fetchCustomerBookings();
+      if (activeTab === "history") fetchHistoryBookings(historyPage, historyFilter, historySearch, historySort);
+    };
+
+    window.addEventListener("dg_booking_reassigned", handleInstantReassign);
+    window.addEventListener("storage", handleInstantReassign);
+
     if (activeTab === "dashboard" || activeTab === "history") {
       if (activeTab === "dashboard") fetchCustomerBookings();
       if (activeTab === "history") fetchHistoryBookings(historyPage, historyFilter, historySearch, historySort);
@@ -208,9 +216,18 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
       const interval = setInterval(() => {
         if (activeTab === "dashboard") fetchCustomerBookings();
         if (activeTab === "history") fetchHistoryBookings(historyPage, historyFilter, historySearch, historySort);
-      }, 5000);
-      return () => clearInterval(interval);
+      }, 2000);
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener("dg_booking_reassigned", handleInstantReassign);
+        window.removeEventListener("storage", handleInstantReassign);
+      };
     }
+
+    return () => {
+      window.removeEventListener("dg_booking_reassigned", handleInstantReassign);
+      window.removeEventListener("storage", handleInstantReassign);
+    };
   }, [user, activeTab, historyPage, historyFilter, historySearch, historySort]);
 
   // Status Indicator renderer (PART 1 Requirement: 8 explicit colors)
