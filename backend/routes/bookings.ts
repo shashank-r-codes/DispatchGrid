@@ -103,14 +103,23 @@ bookingsRouter.get("/track", (req: Request, res: Response) => {
       estimatedArrivalTime = etaDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     }
 
-    // Fetch complete offer history for this booking (Section 5 Requirement)
-    const offerHistory = db.prepare(`
+    // Fetch complete offer history for this booking with technician profiles
+    const rawOffers = db.prepare(`
       SELECT 
         jo.offer_id as offerId,
         jo.technician_id as technicianId,
         u.full_name as technicianName,
+        u.phone as technicianPhone,
+        u.profile_picture_url as technicianAvatar,
+        tp.average_rating as technicianRating,
+        (
+          SELECT json_group_array(s.skill_name)
+          FROM technician_skills ts
+          JOIN skills s ON ts.skill_id = s.skill_id
+          WHERE ts.technician_id = u.user_id
+        ) as technicianSkills,
+        tp.service_categories as technicianCategories,
         jo.status as offerStatus,
-        jo.rejection_reason as rejectionReason,
         jo.offered_at as offeredAt,
         jo.responded_at as respondedAt,
         jo.distance_km as distanceKm,
@@ -118,13 +127,55 @@ bookingsRouter.get("/track", (req: Request, res: Response) => {
         COALESCE(jo.attempt_number, 1) as attemptNumber
       FROM job_offers jo
       JOIN users u ON jo.technician_id = u.user_id
+      LEFT JOIN technician_profiles tp ON jo.technician_id = tp.user_id
       WHERE jo.booking_id = ?
       ORDER BY COALESCE(jo.attempt_number, 1) ASC, jo.rowid ASC
     `).all(booking.bookingId) as any[];
 
-    const activeOffer = offerHistory.find((o) => o.offerStatus === "OFFERED") || 
-                        offerHistory.find((o) => o.offerStatus === "ACCEPTED") || 
-                        offerHistory[offerHistory.length - 1] || null;
+    const hasRejected = rawOffers.some((o) => o.offerStatus === "REJECTED" || o.offerStatus === "EXPIRED");
+    const isReallocated = hasRejected;
+
+    const activeOffer =
+      rawOffers.find((o) => o.offerStatus === "ACCEPTED") ||
+      rawOffers.find((o) => o.offerStatus === "OFFERED") ||
+      (rawOffers.length > 0 ? rawOffers[rawOffers.length - 1] : null);
+
+    const currentTechnicianId = activeOffer ? activeOffer.technicianId : (booking.technicianId || null);
+    const currentTechnicianName = activeOffer ? activeOffer.technicianName : (booking.technicianName || null);
+    const currentTechnicianPhone = activeOffer ? activeOffer.technicianPhone : (booking.technicianPhone || null);
+    const currentTechnicianAvatar = activeOffer ? activeOffer.technicianAvatar : null;
+    const currentTechnicianRating = activeOffer ? activeOffer.technicianRating : (booking.technicianRating || null);
+    const currentOfferStatus = activeOffer ? activeOffer.offerStatus : (booking.bookingStatus === "OFFERED" ? "OFFERED" : null);
+
+    let parsedSkills: string[] = [];
+    try {
+      if (typeof activeOffer?.technicianSkills === "string") parsedSkills = JSON.parse(activeOffer.technicianSkills);
+      else if (Array.isArray(activeOffer?.technicianSkills)) parsedSkills = activeOffer.technicianSkills;
+    } catch {}
+
+    const isConfirmedAccepted =
+      currentOfferStatus === "ACCEPTED" ||
+      ["ASSIGNED", "SCHEDULED", "TECHNICIAN_ACCEPTED", "IN_PROGRESS", "ON_THE_WAY", "COMPLETED"].includes(booking.bookingStatus);
+
+    let reallocationMessage: string | null = null;
+    if (isReallocated) {
+      if (isConfirmedAccepted) {
+        reallocationMessage = `Your service has been successfully reallocated to ${currentTechnicianName || "the assigned technician"}.`;
+      } else {
+        reallocationMessage = "Your service has been reallocated. New technician contacted – Awaiting acceptance.";
+      }
+    }
+
+    const offerHistory = rawOffers.map((o, idx) => {
+      const isCurrentAllocated =
+        (activeOffer && o.offerId === activeOffer.offerId) ||
+        (!rawOffers.some((x) => x.offerStatus === "ACCEPTED") && idx === rawOffers.length - 1);
+      return {
+        ...o,
+        isCurrentAllocated,
+        isPrevious: !isCurrentAllocated,
+      };
+    });
 
     const latestNotif = db.prepare(`
       SELECT title, message, created_at, type
@@ -138,9 +189,18 @@ bookingsRouter.get("/track", (req: Request, res: Response) => {
       booking: {
         ...booking,
         offerHistory,
+        reallocationHistory: offerHistory,
+        isReallocated,
+        reallocationMessage,
         techniciansContactedCount: offerHistory.length,
-        currentTechnicianName: activeOffer ? activeOffer.technicianName : (booking.technicianName || null),
-        currentOfferStatus: activeOffer ? activeOffer.offerStatus : (booking.bookingStatus === "OFFERED" ? "OFFERED" : null),
+        currentTechnicianId,
+        currentTechnicianName,
+        currentTechnicianPhone,
+        currentTechnicianAvatar,
+        currentTechnicianRating,
+        currentTechnicianSkills: parsedSkills,
+        currentOfferStatus,
+        acceptanceStatus: isConfirmedAccepted ? "ACCEPTED" : "AWAITING_ACCEPTANCE",
         latestNotification: latestNotif || null,
         distanceKm,
         travelMinutes,
@@ -425,7 +485,21 @@ bookingsRouter.post("/", (req: Request, res: Response) => {
     const nodeId = findClosestNode(lat, lng);
     const priority = ["NORMAL", "HIGH", "EMERGENCY"].includes(requestedPriority) ? requestedPriority : "NORMAL";
 
-    const customerId = authenticatedUser ? authenticatedUser.userId : null;
+    let customerId = authenticatedUser ? authenticatedUser.userId : null;
+    if (!customerId && effectivePhone) {
+      const cleanP = effectivePhone.replace(/\D/g, "");
+      if (cleanP.length >= 7) {
+        const matchedCust = db.prepare(`
+          SELECT user_id FROM users 
+          WHERE role = 'CUSTOMER' 
+            AND (phone = ? OR REPLACE(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), '(', '') LIKE ?)
+          LIMIT 1
+        `).get(effectivePhone, `%${cleanP.slice(-10)}%`) as any;
+        if (matchedCust) {
+          customerId = matchedCust.user_id;
+        }
+      }
+    }
     const fullAddress = addressLine ? `${addressLine}, ${city || "Bengaluru"}, ${state || "Karnataka"} - ${pincode || "560001"}` : "Bengaluru Central";
 
     // 1. Save Booking in Database in PENDING status
@@ -532,7 +606,7 @@ bookingsRouter.post("/", (req: Request, res: Response) => {
         `).run(
           randomUUID(),
           amit.user_id,
-          \`New \${service.category} Demo Job: \${bookingRef} at \${fullAddress}. Window: \${preferredStartTime}-\${preferredEndTime}. Travel: \${travel.travelMinutes || 12} mins. Accept or decline.\`,
+          `New ${service.category} Demo Job: ${bookingRef} at ${fullAddress}. Window: ${preferredStartTime}-${preferredEndTime}. Travel: ${travel.travelMinutes || 12} mins. Accept or decline.`,
           offerId
         );
 
@@ -544,7 +618,7 @@ bookingsRouter.post("/", (req: Request, res: Response) => {
           `).run(
             randomUUID(),
             customerId,
-            \`We have matched certified specialist \${amit.full_name} for your booking (\${bookingRef}). Status: Awaiting technician acceptance.\`,
+            `We have matched certified specialist ${amit.full_name} for your booking (${bookingRef}). Status: Awaiting technician acceptance.`,
             bookingId
           );
         }
@@ -553,7 +627,7 @@ bookingsRouter.post("/", (req: Request, res: Response) => {
       demoTx();
 
       return res.status(201).json({
-        message: \`Booking created! Offer dispatched exclusively to \${amit.full_name} in DEMO TRACKING MODE.\`,
+        message: `Booking created! Offer dispatched exclusively to ${amit.full_name} in DEMO TRACKING MODE.`,
         bookingId,
         bookingReference: bookingRef,
         status: "OFFERED",

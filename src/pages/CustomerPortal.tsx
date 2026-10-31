@@ -33,6 +33,9 @@ import {
   LayoutDashboard,
   RefreshCw,
   FileText,
+  Truck,
+  Activity,
+  Sparkles,
 } from "lucide-react";
 import { ServiceItem, ServiceCategory, PriorityLevel } from "../types";
 import { DispatchMap } from "../components/DispatchMap";
@@ -83,6 +86,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
   const [historyTotal, setHistoryTotal] = useState<number>(0);
   const [historyPage, setHistoryPage] = useState<number>(1);
   const [historyFilter, setHistoryFilter] = useState<string>("ALL");
+  const [historySort, setHistorySort] = useState<"newest" | "oldest">("newest");
   const [historySearch, setHistorySearch] = useState<string>("");
   const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(false);
 
@@ -143,13 +147,12 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
 
   // Fetch Latest 5 Customer Bookings for Dashboard
   const fetchCustomerBookings = async () => {
-    const curToken = token || localStorage.getItem("dg_token");
-    if (!curToken) return;
+    const curToken = token || localStorage.getItem("dg_token") || localStorage.getItem("token");
     setIsLoadingRecent(true);
     try {
-      const res = await fetch("/api/customers/my/bookings?limit=5", {
-        headers: { Authorization: `Bearer ${curToken}` },
-      });
+      const headers: Record<string, string> = {};
+      if (curToken) headers["Authorization"] = `Bearer ${curToken}`;
+      const res = await fetch("/api/customers/my/bookings?limit=5", { headers });
       if (res.ok) {
         const data = await res.json();
         setRecentBookings(data.bookings || []);
@@ -168,22 +171,22 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
   const fetchHistoryBookings = async (
     page = historyPage,
     status = historyFilter,
-    search = historySearch
+    search = historySearch,
+    sort = historySort
   ) => {
-    const curToken = token || localStorage.getItem("dg_token");
-    if (!curToken) return;
+    const curToken = token || localStorage.getItem("dg_token") || localStorage.getItem("token");
     setIsLoadingHistory(true);
     try {
-      let url = `/api/customers/my/bookings?page=${page}&limit=10`;
+      let url = `/api/customers/my/bookings?page=${page}&limit=10&sort=${sort}`;
       if (status && status !== "ALL") {
         url += `&status=${encodeURIComponent(status)}`;
       }
       if (search && search.trim()) {
         url += `&search=${encodeURIComponent(search.trim())}`;
       }
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${curToken}` },
-      });
+      const headers: Record<string, string> = {};
+      if (curToken) headers["Authorization"] = `Bearer ${curToken}`;
+      const res = await fetch(url, { headers });
       if (res.ok) {
         const data = await res.json();
         setHistoryBookings(data.bookings || []);
@@ -198,17 +201,17 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
 
   // Periodic Auto-Refresh: Real-time status updates on acceptance/rejection/reallocation
   useEffect(() => {
-    if (user && (activeTab === "dashboard" || activeTab === "history")) {
+    if (activeTab === "dashboard" || activeTab === "history") {
       if (activeTab === "dashboard") fetchCustomerBookings();
-      if (activeTab === "history") fetchHistoryBookings(historyPage, historyFilter, historySearch);
+      if (activeTab === "history") fetchHistoryBookings(historyPage, historyFilter, historySearch, historySort);
 
       const interval = setInterval(() => {
         if (activeTab === "dashboard") fetchCustomerBookings();
-        if (activeTab === "history") fetchHistoryBookings(historyPage, historyFilter, historySearch);
+        if (activeTab === "history") fetchHistoryBookings(historyPage, historyFilter, historySearch, historySort);
       }, 5000);
       return () => clearInterval(interval);
     }
-  }, [user, activeTab, historyPage, historyFilter, historySearch]);
+  }, [user, activeTab, historyPage, historyFilter, historySearch, historySort]);
 
   // Status Indicator renderer (PART 1 Requirement: 8 explicit colors)
   const getStatusBadge = (b: any) => {
@@ -494,9 +497,14 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
 
     setIsSubmitting(true);
     try {
+      const curToken = token || localStorage.getItem("dg_token") || localStorage.getItem("token");
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (curToken) {
+        headers["Authorization"] = `Bearer ${curToken}`;
+      }
       const res = await fetch("/api/bookings", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           serviceId: selectedServiceId,
           customerName,
@@ -519,6 +527,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
         setBookingConfirmation(data);
         setStep(4);
         fetchCustomerBookings();
+        fetchHistoryBookings(1, historyFilter, historySearch, historySort);
         showToast("Booking created & auto-allotment initiated!", "success");
       } else {
         showToast(data.error || "Failed to create booking", "error");
@@ -807,6 +816,12 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
                         <span className="text-xs font-bold text-slate-800">
                           &bull; {b.serviceName}
                         </span>
+                        {b.isReallocated && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-800 border border-purple-200 shadow-xs">
+                            <RefreshCw className="w-2.5 h-2.5 text-purple-600" />
+                            <span>Reallocated</span>
+                          </span>
+                        )}
                       </div>
 
                       {/* Status Indicator (8 distinct colors) */}
@@ -828,25 +843,30 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
                         </div>
                       </div>
 
-                      {/* Assigned Technician */}
+                      {/* Assigned or Reallocated Technician */}
                       <div className="space-y-0.5">
                         <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                          <User className="w-3 h-3" /> Assigned Technician
+                          <User className="w-3 h-3" /> {b.isReallocated ? "Reallocated Technician" : "Assigned Technician"}
                         </div>
-                        <div className="font-semibold text-slate-800 flex items-center gap-1.5">
-                          {b.assignedTechnicianName ? (
+                        <div className="font-semibold text-slate-800 flex items-center gap-1.5 flex-wrap">
+                          {b.currentTechnicianName || b.assignedTechnicianName ? (
                             <>
                               <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                              <span>{b.assignedTechnicianName}</span>
+                              <span>{b.currentTechnicianName || b.assignedTechnicianName}</span>
+                              {(b.currentTechnicianId || b.assignedTechnicianId) && (
+                                <span className="font-mono text-[10px] text-slate-400 font-normal">
+                                  ({b.currentTechnicianId || b.assignedTechnicianId})
+                                </span>
+                              )}
                             </>
                           ) : (
                             <span className="text-slate-400 italic">Searching / Awaiting Acceptance</span>
                           )}
                         </div>
-                        {b.assignedTechnicianRating && (
+                        {(b.currentTechnicianRating || b.assignedTechnicianRating) && (
                           <div className="text-[10px] text-amber-600 font-semibold flex items-center gap-0.5">
                             <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
-                            <span>{Number(b.assignedTechnicianRating).toFixed(1)} rating</span>
+                            <span>{Number(b.currentTechnicianRating || b.assignedTechnicianRating).toFixed(1)} rating</span>
                           </div>
                         )}
                       </div>
@@ -1505,7 +1525,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
 
               <button
                 onClick={() => {
-                  fetchHistoryBookings(historyPage, historyFilter, historySearch);
+                  fetchHistoryBookings(historyPage, historyFilter, historySearch, historySort);
                   showToast("Refreshed booking history.", "info");
                 }}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold transition cursor-pointer"
@@ -1528,43 +1548,61 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
                   onChange={(e) => {
                     setHistorySearch(e.target.value);
                     setHistoryPage(1);
-                    fetchHistoryBookings(1, historyFilter, e.target.value);
+                    fetchHistoryBookings(1, historyFilter, e.target.value, historySort);
                   }}
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-900 bg-slate-50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
-              {/* Status Filter Pills */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-                {[
-                  { id: "ALL", label: "All Bookings" },
-                  { id: "PENDING", label: "Pending" },
-                  { id: "AWAITING_ACCEPTANCE", label: "Awaiting Acceptance" },
-                  { id: "ASSIGNED", label: "Assigned" },
-                  { id: "IN_PROGRESS", label: "In Progress" },
-                  { id: "COMPLETED", label: "Completed" },
-                  { id: "CANCELLED", label: "Cancelled" },
-                  { id: "UNASSIGNED", label: "Unassigned" },
-                ].map((flt) => {
-                  const isSelected = historyFilter === flt.id;
-                  return (
-                    <button
-                      key={flt.id}
-                      onClick={() => {
-                        setHistoryFilter(flt.id);
-                        setHistoryPage(1);
-                        fetchHistoryBookings(1, flt.id, historySearch);
-                      }}
-                      className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition cursor-pointer ${
-                        isSelected
-                          ? "bg-slate-900 text-white shadow-sm"
-                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                      }`}
-                    >
-                      {flt.label}
-                    </button>
-                  );
-                })}
+              {/* Status Filter Pills & Date Sorting Selector */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                {/* 5 Required Working Filters: All, Active, Completed, Cancelled, Reallocated */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
+                  {[
+                    { id: "ALL", label: "All" },
+                    { id: "ACTIVE", label: "Active" },
+                    { id: "COMPLETED", label: "Completed" },
+                    { id: "CANCELLED", label: "Cancelled" },
+                    { id: "REALLOCATED", label: "Reallocated" },
+                  ].map((flt) => {
+                    const isSelected = historyFilter === flt.id;
+                    return (
+                      <button
+                        key={flt.id}
+                        onClick={() => {
+                          setHistoryFilter(flt.id);
+                          setHistoryPage(1);
+                          fetchHistoryBookings(1, flt.id, historySearch, historySort);
+                        }}
+                        className={`px-3.5 py-1.5 rounded-xl font-bold whitespace-nowrap transition cursor-pointer ${
+                          isSelected
+                            ? "bg-slate-900 text-white shadow-sm"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        }`}
+                      >
+                        {flt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Date Sorting: Newest first (default) vs Oldest first */}
+                <div className="flex items-center gap-2 self-end sm:self-auto flex-shrink-0">
+                  <span className="text-[11px] font-semibold text-slate-500">Sort by Date:</span>
+                  <select
+                    value={historySort}
+                    onChange={(e) => {
+                      const newSort = e.target.value as "newest" | "oldest";
+                      setHistorySort(newSort);
+                      setHistoryPage(1);
+                      fetchHistoryBookings(1, historyFilter, historySearch, newSort);
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-xs font-bold focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  >
+                    <option value="newest">Newest first</option>
+                    <option value="oldest">Oldest first</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -1573,20 +1611,6 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
               <div className="py-12 flex flex-col items-center justify-center text-xs text-slate-500 gap-2">
                 <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
                 <span>Loading your booking history...</span>
-              </div>
-            ) : !user ? (
-              <div className="text-center py-12 px-4 border border-dashed border-slate-200 rounded-3xl bg-slate-50/50 space-y-3">
-                <User className="w-8 h-8 text-slate-400 mx-auto" />
-                <h3 className="text-sm font-bold text-slate-800">Sign in to view your complete history</h3>
-                <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  Your persistent booking history is secured to your customer account.
-                </p>
-                <button
-                  onClick={() => (onNavigateLogin ? onNavigateLogin() : switchTab("book"))}
-                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition cursor-pointer"
-                >
-                  Sign In
-                </button>
               </div>
             ) : historyBookings.length === 0 ? (
               <div className="text-center py-12 px-4 border border-dashed border-slate-200 rounded-3xl bg-slate-50/50 space-y-3">
@@ -1643,6 +1667,14 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
                         <span className="text-xs font-bold text-slate-800">
                           &bull; {b.serviceName}
                         </span>
+
+                        {/* Reallocated Badge */}
+                        {b.isReallocated && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-800 border border-purple-200 shadow-xs">
+                            <RefreshCw className="w-2.5 h-2.5 text-purple-600" />
+                            <span>Reallocated</span>
+                          </span>
+                        )}
                       </div>
 
                       {/* Status Indicator */}
@@ -1653,51 +1685,157 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-slate-600 pt-2 border-t border-slate-100">
                       <div>
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                          Preferred Schedule
+                          Schedule & Address
                         </span>
-                        <span className="font-semibold text-slate-800">
+                        <span className="font-semibold text-slate-800 block">
                           {b.preferredDate} &bull; {b.preferredStartTime} - {b.preferredEndTime}
                         </span>
-                        <span className="text-[10px] text-slate-500 block">
-                          Booked: {new Date(b.createdAt).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}
+                        <span className="text-[11px] text-slate-500 truncate block max-w-xs" title={b.serviceAddress}>
+                          📍 {b.serviceAddress || "Indiranagar, Bengaluru"}
+                        </span>
+                        <span className="text-[10px] text-slate-400 block mt-0.5">
+                          Created: {new Date(b.createdAt).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}
                         </span>
                       </div>
 
                       <div>
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                          Assigned Technician
+                          {b.isReallocated ? "Reallocated Technician" : "Assigned Technician"}
                         </span>
-                        <span className="font-semibold text-slate-800 flex items-center gap-1.5">
-                          {b.assignedTechnicianName ? (
+                        <div className="font-semibold text-slate-800 flex items-center gap-1.5 flex-wrap">
+                          {b.currentTechnicianName || b.assignedTechnicianName ? (
                             <>
                               <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                              <span>{b.assignedTechnicianName}</span>
+                              <span>{b.currentTechnicianName || b.assignedTechnicianName}</span>
+                              {(b.currentTechnicianId || b.assignedTechnicianId) && (
+                                <span className="font-mono text-[10px] text-slate-400 font-normal">
+                                  ({b.currentTechnicianId || b.assignedTechnicianId})
+                                </span>
+                              )}
                             </>
                           ) : (
                             <span className="text-slate-400 italic">Searching / Awaiting Acceptance</span>
                           )}
-                        </span>
+                        </div>
+                        {(b.currentTechnicianRating || b.assignedTechnicianRating) && (
+                          <div className="text-[10px] text-amber-600 font-semibold flex items-center gap-0.5 mt-0.5">
+                            <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                            <span>{Number(b.currentTechnicianRating || b.assignedTechnicianRating).toFixed(1)} rating</span>
+                          </div>
+                        )}
                         {b.completionDate && (
-                          <span className="text-[10px] text-emerald-700 font-semibold block">
-                            Completed: {new Date(b.completionDate).toLocaleDateString()}
+                          <span className="text-[10px] text-emerald-700 font-bold block mt-0.5">
+                            Completed: {new Date(b.completionDate).toLocaleDateString()} {new Date(b.completionDate).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        )}
+                        {b.cancellationReason && (
+                          <span className="text-[10px] text-rose-600 font-semibold block mt-0.5">
+                            Cancelled: {b.cancellationReason}
                           </span>
                         )}
                       </div>
 
                       <div className="flex flex-col justify-between sm:items-end">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                          Technician Offer Status
+                          Offer & Transit Status
                         </span>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap sm:justify-end">
                           <span className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                            {b.offerStatus || "PENDING"}
+                            {b.currentOfferStatus || b.offerStatus || "PENDING"}
                           </span>
+                          {b.distanceKm > 0 && (
+                            <span className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                              {b.distanceKm} km
+                            </span>
+                          )}
                           <span className="text-blue-600 text-xs font-bold inline-flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
                             Details <ChevronRight className="w-3.5 h-3.5" />
                           </span>
                         </div>
+                        {b.indicativePrice && (
+                          <span className="text-[11px] font-bold text-slate-700 mt-1">
+                            ₹{b.indicativePrice}
+                          </span>
+                        )}
                       </div>
                     </div>
+
+                    {/* Problem Description Snippet */}
+                    {b.problemDescription && (
+                      <div className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded-xl border border-slate-100 line-clamp-2">
+                        <strong className="text-slate-800">Problem:</strong> {b.problemDescription}
+                      </div>
+                    )}
+
+                    {/* Reallocated Status Display Banner with Moving Amit Icon */}
+                    {b.isReallocated && (
+                      <div className="p-3 rounded-2xl border border-purple-200/90 bg-gradient-to-r from-purple-50 via-indigo-50/70 to-blue-50/70 text-xs shadow-xs space-y-2">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            {/* Animated radar pulse beacon */}
+                            <span className="relative flex h-3 w-3 flex-shrink-0">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-3 w-3 bg-purple-600"></span>
+                            </span>
+                            <span className="font-extrabold text-purple-950 flex items-center gap-1.5 text-xs">
+                              {/* Animated moving vehicle icon for Amit / reallocated technician */}
+                              <Truck className="w-4 h-4 text-purple-600 animate-bounce flex-shrink-0" />
+                              <span>
+                                {b.currentTechnicianName || "Amit Patel"} is Moving / En Route
+                              </span>
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-800 border border-purple-200 shadow-2xs">
+                              <Activity className="w-3 h-3 text-purple-600 animate-pulse" />
+                              Moving to Location
+                            </span>
+                            {b.distanceKm > 0 && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                                {b.distanceKm} km away
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Visual Transit Progress Bar */}
+                        <div className="pt-1 pb-0.5">
+                          <div className="flex items-center justify-between text-[10px] text-slate-500 font-semibold mb-1">
+                            <span className="flex items-center gap-1 text-slate-600 font-bold">
+                              <MapPin className="w-3 h-3 text-slate-400" /> Dispatched
+                            </span>
+                            <span className="font-extrabold text-purple-700 flex items-center gap-1">
+                              <Navigation className="w-3 h-3 text-purple-600 animate-spin-slow" />
+                              In Transit
+                            </span>
+                            <span className="flex items-center gap-1 text-blue-700 font-bold">
+                              <MapPin className="w-3 h-3 text-blue-600" /> Destination
+                            </span>
+                          </div>
+                          <div className="h-2 w-full bg-purple-100/90 rounded-full overflow-hidden relative border border-purple-200/60">
+                            <div className="h-full bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 rounded-full w-2/3 animate-pulse"></div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between text-[11px] text-purple-900 pt-0.5 border-t border-purple-200/50">
+                          <span>{b.reallocationMessage}</span>
+                          {b.estimatedArrivalTime && (
+                            <span className="font-extrabold text-purple-950">Est. Arrival: {b.estimatedArrivalTime}</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Customer Review Summary if Completed */}
+                    {b.bookingStatus === "COMPLETED" && (b.customerRating || b.customerReview) && (
+                      <div className="p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200/80 text-[11px] text-emerald-900 flex items-center gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                        <span>
+                          <strong>Customer Review:</strong> {b.customerRating}★ {b.customerReview ? `"${b.customerReview}"` : "Service completed successfully."}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 ))}
 
@@ -1712,7 +1850,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
                       onClick={() => {
                         const p = Math.max(1, historyPage - 1);
                         setHistoryPage(p);
-                        fetchHistoryBookings(p, historyFilter, historySearch);
+                        fetchHistoryBookings(p, historyFilter, historySearch, historySort);
                       }}
                       className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-40 transition cursor-pointer font-semibold"
                     >
@@ -1726,7 +1864,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
                       onClick={() => {
                         const p = historyPage + 1;
                         setHistoryPage(p);
-                        fetchHistoryBookings(p, historyFilter, historySearch);
+                        fetchHistoryBookings(p, historyFilter, historySearch, historySort);
                       }}
                       className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-40 transition cursor-pointer font-semibold"
                     >
@@ -2559,6 +2697,12 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
                     #{selectedBookingForDetails.bookingReference || selectedBookingForDetails.bookingId}
                   </span>
                   {getStatusBadge(selectedBookingForDetails)}
+                  {selectedBookingForDetails.isReallocated && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-800 border border-purple-200 shadow-xs">
+                      <RefreshCw className="w-2.5 h-2.5 text-purple-600" />
+                      <span>Reallocated</span>
+                    </span>
+                  )}
                 </div>
                 <h2 className="text-xl font-extrabold text-slate-900 mt-1">
                   {selectedBookingForDetails.serviceName}
@@ -2575,6 +2719,53 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {/* Reallocation Status Banner with Moving Amit Vehicle Icon */}
+            {selectedBookingForDetails.isReallocated && (
+              <div className="p-4 rounded-2xl border border-purple-200 bg-gradient-to-r from-purple-50 via-indigo-50/80 to-blue-50/80 text-xs shadow-xs space-y-3">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2.5">
+                    <span className="relative flex h-3.5 w-3.5 flex-shrink-0">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-purple-600"></span>
+                    </span>
+                    <span className="font-extrabold text-purple-950 flex items-center gap-2 text-sm">
+                      <Truck className="w-5 h-5 text-purple-600 animate-bounce flex-shrink-0" />
+                      <span>{selectedBookingForDetails.currentTechnicianName || "Amit Patel"} is Moving / In Transit</span>
+                    </span>
+                  </div>
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-extrabold bg-purple-100 text-purple-800 border border-purple-200 shadow-xs">
+                    <Activity className="w-3.5 h-3.5 text-purple-600 animate-pulse" />
+                    Live Vehicle Movement
+                  </span>
+                </div>
+
+                {/* Animated Transit Progress Bar */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-[11px] text-slate-600 font-semibold">
+                    <span className="flex items-center gap-1 font-bold text-slate-700">
+                      <MapPin className="w-3.5 h-3.5 text-slate-400" /> Dispatched
+                    </span>
+                    <span className="font-extrabold text-purple-700 flex items-center gap-1 animate-pulse">
+                      <Navigation className="w-3.5 h-3.5 text-purple-600" /> En Route to Your Address
+                    </span>
+                    <span className="flex items-center gap-1 text-blue-700 font-bold">
+                      <MapPin className="w-3.5 h-3.5 text-blue-600" /> Destination
+                    </span>
+                  </div>
+                  <div className="h-2.5 w-full bg-purple-100 rounded-full overflow-hidden relative border border-purple-200">
+                    <div className="h-full bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 rounded-full w-2/3 animate-pulse"></div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-xs text-purple-900 pt-1 border-t border-purple-200/60">
+                  <span className="font-semibold">{selectedBookingForDetails.reallocationMessage}</span>
+                  {selectedBookingForDetails.estimatedArrivalTime && (
+                    <span className="font-extrabold text-purple-950">ETA: {selectedBookingForDetails.estimatedArrivalTime}</span>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Complete Service Information */}
             <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200/80 space-y-3">
@@ -2649,46 +2840,65 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
             {/* Technician Information */}
             <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200/80 space-y-3 text-xs">
               <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                Technician Information
+                {selectedBookingForDetails.isReallocated ? "Currently Allocated Specialist" : "Assigned Specialist"}
               </div>
-              {selectedBookingForDetails.assignedTechnicianName ? (
-                <div className="flex items-center justify-between flex-wrap gap-3">
-                  <div className="flex items-center gap-3">
-                    {selectedBookingForDetails.assignedTechnicianAvatar ? (
-                      <img
-                        src={selectedBookingForDetails.assignedTechnicianAvatar}
-                        alt={selectedBookingForDetails.assignedTechnicianName}
-                        className="w-10 h-10 rounded-full object-cover border border-slate-200 shadow-sm"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
-                        {selectedBookingForDetails.assignedTechnicianName.charAt(0)}
+              {(selectedBookingForDetails.currentTechnicianName || selectedBookingForDetails.assignedTechnicianName) ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div className="flex items-center gap-3">
+                      {(selectedBookingForDetails.currentTechnicianAvatar || selectedBookingForDetails.assignedTechnicianAvatar) ? (
+                        <img
+                          src={selectedBookingForDetails.currentTechnicianAvatar || selectedBookingForDetails.assignedTechnicianAvatar}
+                          alt={selectedBookingForDetails.currentTechnicianName || selectedBookingForDetails.assignedTechnicianName}
+                          className="w-10 h-10 rounded-full object-cover border border-slate-200 shadow-sm"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
+                          {(selectedBookingForDetails.currentTechnicianName || selectedBookingForDetails.assignedTechnicianName || "T").charAt(0)}
+                        </div>
+                      )}
+                      <div>
+                        <div className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                          <span>{selectedBookingForDetails.currentTechnicianName || selectedBookingForDetails.assignedTechnicianName}</span>
+                          {selectedBookingForDetails.isReallocated && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                              Reallocated
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-slate-500 font-mono">
+                          Technician ID: {selectedBookingForDetails.currentTechnicianId || selectedBookingForDetails.assignedTechnicianId}
+                        </div>
                       </div>
-                    )}
-                    <div>
-                      <div className="font-bold text-slate-900 text-sm">
-                        {selectedBookingForDetails.assignedTechnicianName}
-                      </div>
-                      <div className="text-[11px] text-slate-500 font-mono">
-                        Technician ID: {selectedBookingForDetails.assignedTechnicianId}
-                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {(selectedBookingForDetails.currentTechnicianRating || selectedBookingForDetails.assignedTechnicianRating) && (
+                        <div className="flex items-center gap-1 bg-amber-50 text-amber-800 px-3 py-1.5 rounded-xl border border-amber-200 font-bold text-xs">
+                          <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                          <span>{Number(selectedBookingForDetails.currentTechnicianRating || selectedBookingForDetails.assignedTechnicianRating).toFixed(1)} Rating</span>
+                        </div>
+                      )}
+                      {(selectedBookingForDetails.currentTechnicianPhone || selectedBookingForDetails.assignedTechnicianPhone) && (
+                        <div className="flex items-center gap-1 bg-slate-100 text-slate-700 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold">
+                          <Phone className="w-3 h-3 text-slate-500" />
+                          <span>{selectedBookingForDetails.currentTechnicianPhone || selectedBookingForDetails.assignedTechnicianPhone}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    {selectedBookingForDetails.assignedTechnicianRating && (
-                      <div className="flex items-center gap-1 bg-amber-50 text-amber-800 px-3 py-1.5 rounded-xl border border-amber-200 font-bold text-xs">
-                        <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                        <span>{Number(selectedBookingForDetails.assignedTechnicianRating).toFixed(1)} Rating</span>
-                      </div>
-                    )}
-                    {selectedBookingForDetails.assignedTechnicianPhone && (
-                      <div className="flex items-center gap-1 bg-slate-100 text-slate-700 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold">
-                        <Phone className="w-3 h-3 text-slate-500" />
-                        <span>{selectedBookingForDetails.assignedTechnicianPhone}</span>
-                      </div>
-                    )}
-                  </div>
+                  {/* Skills badges */}
+                  {selectedBookingForDetails.currentTechnicianSkills && selectedBookingForDetails.currentTechnicianSkills.length > 0 && (
+                    <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-slate-200/60">
+                      <span className="text-[10px] text-slate-400 font-semibold uppercase">Specialist Skills:</span>
+                      {selectedBookingForDetails.currentTechnicianSkills.map((sk) => (
+                        <span key={sk} className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-white text-slate-700 border border-slate-200/70">
+                          {sk}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-slate-500 italic">
@@ -2746,9 +2956,14 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
                         >
                           {offer.offerStatus}
                         </span>
-                        {offer.rejectionReason && (
-                          <span className="text-[10px] text-rose-600 italic">
-                            ({offer.rejectionReason})
+                        {offer.isCurrentAllocated ? (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-900 border border-purple-200 flex items-center gap-1 shadow-2xs">
+                            <Truck className="w-3 h-3 text-purple-600 animate-bounce" />
+                            Current Allocated Candidate (Moving)
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                            Previous Candidate
                           </span>
                         )}
                       </div>

@@ -582,7 +582,7 @@ export function resetAndSeedDatabase(force = false) {
       const confEnd = isScheduledOrActive ? `${j.preferredDate}T${j.preferredEndTime}:00Z` : null;
 
       // Assign a rich variety of 7 bookings to the demo customer account
-      const isDemoCustomerJob = [0, 6, 12, 19, 27, 34, 45].includes(idx);
+      const isDemoCustomerJob = [0, 6, 12, 19, 27, 34, 45, 72, 80, 94, 101].includes(idx);
       const custId = isDemoCustomerJob ? "USR_CUST_DEMO" : null;
       const cName = isDemoCustomerJob ? "David Miller (Valued Customer)" : j.customerName;
       const cPhone = isDemoCustomerJob ? "+91-98800-00001" : j.customerPhone;
@@ -648,7 +648,111 @@ export function resetAndSeedDatabase(force = false) {
     insertNotifStmt.run("NOTIF_03", "USR_TECH_01", "New Job Offer Dispatched", "New high-priority wiring repair offer assigned in CBD / Central zone.", "JOB_OFFER", "BOOK_ELEC_01", 0);
     insertNotifStmt.run("NOTIF_04", "USR_ADMIN_01", "Disruption Auto-Recovered", "Technician reported delay handled smoothly via Dijkstra re-optimization.", "RECOVERY", "REC_AUTO_01", 1);
 
-    console.log(`[DispatchGrid] Seed complete: 20 Technicians & ${seedJobs.length} Service Jobs successfully populated.`);
+        // Dedicated Reallocated Bookings for Demo Customer History
+    const reallocBkId = "BK_DEMO_REALLOC_01";
+    const reallocRef = "DG-2026-777";
+    insertBookingStmt.run(
+      reallocBkId,
+      reallocRef,
+      "USR_CUST_DEMO",
+      "David Miller (Valued Customer)",
+      "+91-98800-00001",
+      "High priority electrical tripping. Customer requested quick inspection.",
+      null,
+      "SRV_E_03",
+      "USR_TECH_02",
+      "HIGH",
+      "HIGH",
+      "USR_ADMIN_01",
+      "OFFERED",
+      "Main DB RCCB trip switch sparking under load. Reallocated after technician 1 declined.",
+      "100 Indiranagar 12th Main, Bengaluru",
+      12.9784,
+      77.6408,
+      "NODE_EAST",
+      baseDate,
+      "14:00",
+      "15:00",
+      null,
+      null,
+      14
+    );
+
+    insertOfferStmt.run("OFFER_REALLOC_01_A", reallocBkId, "USR_TECH_01", "REJECTED", 18, 5.2, 0.15);
+    db.prepare(`
+      UPDATE job_offers
+      SET rejection_reason = 'Technician assigned to urgent high-voltage sub-station emergency',
+          offered_at = datetime('now', '-25 minutes'),
+          responded_at = datetime('now', '-20 minutes'),
+          attempt_number = 1
+      WHERE offer_id = 'OFFER_REALLOC_01_A'
+    `).run();
+
+    insertOfferStmt.run("OFFER_REALLOC_01_B", reallocBkId, "USR_TECH_02", "OFFERED", 14, 4.1, 0.12);
+    db.prepare(`
+      UPDATE job_offers
+      SET offered_at = datetime('now', '-18 minutes'),
+          attempt_number = 2
+      WHERE offer_id = 'OFFER_REALLOC_01_B'
+    `).run();
+
+    insertHistoryStmt.run("H_REALLOC_01_A", reallocBkId, "PENDING", "OFFERED", "SYSTEM_DISPATCH_ENGINE", "Initial offer sent to Rajesh Kumar");
+    insertHistoryStmt.run("H_REALLOC_01_B", reallocBkId, "OFFERED", "REJECTED", "USR_TECH_01", "Technician declined offer");
+    insertHistoryStmt.run("H_REALLOC_01_C", reallocBkId, "REJECTED", "OFFERED", "SYSTEM_DISPATCH_ENGINE", "Automatic reallocation: Dispatched offer to next closest verified specialist Vikram Singh");
+
+    const reallocAccBkId = "BK_DEMO_REALLOC_02";
+    const reallocAccRef = "DG-2026-778";
+    insertBookingStmt.run(
+      reallocAccBkId,
+      reallocAccRef,
+      "USR_CUST_DEMO",
+      "David Miller (Valued Customer)",
+      "+91-98800-00001",
+      "Split AC water leakage and refrigerant check.",
+      null,
+      "SRV_AC_02",
+      "USR_TECH_03",
+      "NORMAL",
+      "NORMAL",
+      "USR_ADMIN_01",
+      "ASSIGNED",
+      "Split AC drainage blocked and dripping on living room electronics. Reallocated and accepted.",
+      "100 Indiranagar 12th Main, Bengaluru",
+      12.9784,
+      77.6408,
+      "NODE_EAST",
+      baseDate,
+      "16:00",
+      "17:30",
+      `${baseDate}T16:00:00Z`,
+      `${baseDate}T17:30:00Z`,
+      12
+    );
+
+    insertOfferStmt.run("OFFER_REALLOC_02_A", reallocAccBkId, "USR_TECH_04", "REJECTED", 22, 6.8, 0.20);
+    db.prepare(`
+      UPDATE job_offers
+      SET rejection_reason = 'Technician stuck in transit outside coverage sector',
+          offered_at = datetime('now', '-45 minutes'),
+          responded_at = datetime('now', '-40 minutes'),
+          attempt_number = 1
+      WHERE offer_id = 'OFFER_REALLOC_02_A'
+    `).run();
+
+    insertOfferStmt.run("OFFER_REALLOC_02_B", reallocAccBkId, "USR_TECH_03", "ACCEPTED", 12, 3.4, 0.10);
+    db.prepare(`
+      UPDATE job_offers
+      SET offered_at = datetime('now', '-38 minutes'),
+          responded_at = datetime('now', '-35 minutes'),
+          attempt_number = 2
+      WHERE offer_id = 'OFFER_REALLOC_02_B'
+    `).run();
+
+    insertHistoryStmt.run("H_REALLOC_02_A", reallocAccBkId, "PENDING", "OFFERED", "SYSTEM_DISPATCH_ENGINE", "Initial offer dispatched");
+    insertHistoryStmt.run("H_REALLOC_02_B", reallocAccBkId, "OFFERED", "REJECTED", "USR_TECH_04", "Offer declined");
+    insertHistoryStmt.run("H_REALLOC_02_C", reallocAccBkId, "REJECTED", "ASSIGNED", "USR_TECH_03", "Automatic reallocation: Accepted by specialist");
+
+console.log(`[DispatchGrid] Seed complete: 20 Technicians & ${seedJobs.length} Service Jobs successfully populated.`);
   });
 
   seedTx();

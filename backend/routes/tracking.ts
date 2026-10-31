@@ -167,3 +167,4 @@ trackingRouter.post("/:bookingId/complete", authenticateToken, (req: Authenticat
     return res.status(400).json({ error: err.message || "Failed to complete job" });
   }
 });
+
