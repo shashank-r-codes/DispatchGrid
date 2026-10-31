@@ -581,11 +581,10 @@ export function resetAndSeedDatabase(force = false) {
       const confStart = isScheduledOrActive ? `${j.preferredDate}T${j.preferredStartTime}:00Z` : null;
       const confEnd = isScheduledOrActive ? `${j.preferredDate}T${j.preferredEndTime}:00Z` : null;
 
-      // Assign a rich variety of 7 bookings to the demo customer account
-      const isDemoCustomerJob = [0, 6, 12, 19, 27, 34, 45, 72, 80, 94, 101].includes(idx);
-      const custId = isDemoCustomerJob ? "USR_CUST_DEMO" : null;
-      const cName = isDemoCustomerJob ? "David Miller (Valued Customer)" : j.customerName;
-      const cPhone = isDemoCustomerJob ? "+91-98800-00001" : j.customerPhone;
+      // Single Customer Mode: All bookings belong to the single customer (David Miller)
+      const custId = "USR_CUST_DEMO";
+      const cName = "David Miller (Valued Customer)";
+      const cPhone = "+91-98800-00001";
 
       insertBookingStmt.run(
         j.bookingId,
@@ -628,7 +627,7 @@ export function resetAndSeedDatabase(force = false) {
         insertReviewStmt.run(
           `REV_${j.bookingId}`,
           j.bookingId,
-          isDemoCustomerJob ? "USR_CUST_DEMO" : null,
+          "USR_CUST_DEMO",
           assignedTechId,
           j.customerReview.rating,
           j.customerReview.comment,

@@ -61,7 +61,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
   const { user, token, refreshUserProfile } = useAuth();
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<"dashboard" | "book" | "history" | "track" | "profile">(
-    user ? "dashboard" : "book"
+    "dashboard"
   );
 
   // Sync activeTab with Navbar selection
@@ -459,6 +459,18 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
     }
   };
 
+  // Immediate fetch on mount: Both recent bookings and full history load instantly
+  useEffect(() => {
+    fetchCustomerBookings();
+    fetchHistoryBookings(1, "ALL", "", "newest");
+  }, []);
+
+  // Immediate fetch on mount: Both recent bookings and full history load instantly
+  useEffect(() => {
+    fetchCustomerBookings();
+    fetchHistoryBookings(1, "ALL", "", "newest");
+  }, []);
+
   useEffect(() => {
     fetch("/api/services?activeOnly=true")
       .then((res) => res.json())
@@ -666,7 +678,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
                   <span className="text-xs text-slate-400 font-medium">Real-Time Autonomous Dispatch</span>
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-                  Welcome back, <span className="text-blue-400">{user?.fullName || "Valued Customer"}</span>
+                  Welcome back, <span className="text-blue-400">{user?.fullName || "David Miller (Valued Customer)"}</span>
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-300 max-w-xl">
                   Book certified technicians, track live dispatch progress, and monitor automatic reallocation seamlessly.
@@ -724,37 +736,11 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
               </div>
             </div>
 
-            {/* Content State: Loading / Unauthenticated / Empty / List */}
+            {/* Content State: Loading / Empty / List */}
             {isLoadingRecent && recentBookings.length === 0 ? (
               <div className="py-12 flex flex-col items-center justify-center text-xs text-slate-500 gap-2">
                 <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
                 <span>Loading your recent service requests...</span>
-              </div>
-            ) : !user ? (
-              <div className="text-center py-12 px-4 border border-dashed border-slate-200 rounded-3xl bg-slate-50/50 space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto shadow-sm">
-                  <User className="w-6 h-6" />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-sm font-bold text-slate-800">Sign in to view your service requests</h3>
-                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                    Sign in to track your service requests, view technician assignments, and access booking history.
-                  </p>
-                </div>
-                <div className="flex items-center justify-center gap-3 pt-1">
-                  <button
-                    onClick={() => (onNavigateLogin ? onNavigateLogin() : switchTab("book"))}
-                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer"
-                  >
-                    Sign In
-                  </button>
-                  <button
-                    onClick={() => switchTab("book")}
-                    className="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition cursor-pointer"
-                  >
-                    Book as Guest
-                  </button>
-                </div>
               </div>
             ) : recentBookings.length === 0 ? (
               /* Empty State (Explicit requirement) */

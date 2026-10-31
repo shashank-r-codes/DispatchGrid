@@ -209,15 +209,6 @@ export const CuteComputerMascot: React.FC<CuteComputerMascotProps> = ({
         <div className="w-28 h-4 bg-slate-300 rounded-b-xl mx-auto shadow-md border-t border-slate-400" />
         <div className="w-40 h-3 bg-slate-400 rounded-full mx-auto shadow-lg" />
       </div>
-
-      {/* Floating Status Pill */}
-      <div className="mt-2.5 flex items-center gap-2">
-        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1">
-          <span>Interactive 3D Assistant</span>
-          <span className="text-slate-300">•</span>
-          <span className="text-blue-600 font-mono">Spline Inspired</span>
-        </span>
-      </div>
     </div>
   );
 };

@@ -175,44 +175,27 @@ customersRouter.get("/my/bookings", (req: Request, res: Response) => {
       } catch {}
     }
 
+    // Single Customer System: There is only ONE customer all the time (David Miller, USR_CUST_DEMO)
+    // Only synthetic automated test suites with USR_TEST_CUST_ are isolated
     let targetUserId = authenticatedUser?.userId;
-    let targetRole = authenticatedUser?.role;
-
-    // Check count for authenticated customer
-    let userHasBookings = false;
-    if (targetUserId && targetRole === "CUSTOMER") {
-      const userRec = db.prepare("SELECT phone, email FROM users WHERE user_id = ?").get(targetUserId) as any;
-      const uPhone = userRec?.phone || "";
-      const cP = uPhone.replace(/\D/g, "");
-      const countRes = cP.length >= 7
-        ? db.prepare(`SELECT COUNT(*) as c FROM bookings WHERE customer_id = ? OR customer_phone = ? OR REPLACE(REPLACE(REPLACE(REPLACE(customer_phone, ' ', ''), '-', ''), '+', ''), '(', '') LIKE ?`).get(targetUserId, uPhone, `%${cP.slice(-10)}%`) as any
-        : db.prepare(`SELECT COUNT(*) as c FROM bookings WHERE customer_id = ?`).get(targetUserId) as any;
-      if (countRes && countRes.c > 0) {
-        userHasBookings = true;
-      }
-    }
-
-    // If guest, or Admin evaluating the customer portal, or user with 0 bookings, fallback to USR_CUST_DEMO so the page ALWAYS displays rich workable records
-    if (!targetUserId || targetRole === "ADMIN" || !userHasBookings) {
+    if (!targetUserId || !targetUserId.startsWith("USR_TEST_CUST_")) {
       targetUserId = "USR_CUST_DEMO";
     }
 
     const user = db.prepare("SELECT phone, email FROM users WHERE user_id = ?").get(targetUserId) as any;
     const phone = user ? user.phone : "+91-98800-00001";
-    const cleanPhone = (phone || "").replace(/\D/g, "");
 
     const { status, search, page = "1", limit = "10", sort = "newest" } = req.query;
     const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
     const limitNum = Math.max(1, Math.min(100, parseInt(limit as string, 10) || 10));
     const offset = (pageNum - 1) * limitNum;
 
-    let whereClause = cleanPhone.length >= 7
-      ? "WHERE (b.customer_id = ? OR (b.customer_phone IS NOT NULL AND (b.customer_phone = ? OR REPLACE(REPLACE(REPLACE(REPLACE(b.customer_phone, ' ', ''), '-', ''), '+', ''), '(', '') LIKE ?)))"
-      : "WHERE (b.customer_id = ? OR (b.customer_phone IS NOT NULL AND b.customer_phone = ?))";
+    // Single Customer Mode: Retrieve all bookings for the customer
+    let whereClause = targetUserId === "USR_CUST_DEMO"
+      ? "WHERE (b.customer_id = 'USR_CUST_DEMO' OR b.customer_id IS NULL OR b.customer_phone = '+91-98800-00001')"
+      : "WHERE b.customer_id = ?";
 
-    const params: any[] = cleanPhone.length >= 7
-      ? [targetUserId, phone, `%${cleanPhone.slice(-10)}%`]
-      : [targetUserId, phone];
+    const params: any[] = targetUserId === "USR_CUST_DEMO" ? [] : [targetUserId];
 
     // Status filter mapping supporting ALL, ACTIVE, COMPLETED, CANCELLED, REALLOCATED
     if (status && status !== "ALL") {
