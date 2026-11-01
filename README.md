@@ -1,5 +1,11 @@
 # DispatchGrid – Intelligent Workforce Scheduling & Recovery Platform
 
+## 🚀 Live Demo
+
+🌐 **[Launch DispatchGrid](https://dispatchgrid-eq29.onrender.com)**
+
+> Note: The free Render instance may take up to 50 seconds to wake up after inactivity.
+
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-cyan.svg)](https://react.dev/)
 [![SQLite](https://img.shields.io/badge/SQLite-WAL%20Mode-blue.svg)](https://www.sqlite.org/)
