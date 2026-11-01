@@ -1,16 +1,31 @@
 import Database from "better-sqlite3";
 import path from "path";
+import fs from "fs";
 import bcrypt from "bcryptjs";
 import { METRO_NODES } from "./roadNetwork.js";
 import { SEED_TECHNICIANS } from "./seedData.js";
 import { generateSeedJobs } from "./seedJobs.js";
 import { randomUUID } from "crypto";
 
-const dbPath = path.resolve(process.cwd(), "dispatchgrid.db");
+export const dbPath = process.env.DATABASE_PATH
+  ? path.resolve(process.env.DATABASE_PATH)
+  : path.resolve(process.cwd(), "dispatchgrid.db");
+
+// Ensure the directory for the database file exists (crucial for persistent mounts like /var/data)
+const dbDir = path.dirname(dbPath);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+
 export const db = new Database(dbPath);
 
-// Enable WAL mode and foreign key constraints
-db.pragma("journal_mode = WAL");
+// Enable WAL mode with graceful fallback to DELETE mode if unsupported by filesystem/mount
+try {
+  db.pragma("journal_mode = WAL");
+} catch (walErr) {
+  console.warn("[DispatchGrid] WAL mode not supported on this filesystem, falling back to DELETE mode:", walErr);
+  db.pragma("journal_mode = DELETE");
+}
 db.pragma("foreign_keys = ON");
 
 export function initDatabase(autoSeed = true) {
@@ -67,7 +82,7 @@ export function initDatabase(autoSeed = true) {
       current_longitude REAL NOT NULL,
       service_areas TEXT NOT NULL,
       availability_status TEXT NOT NULL DEFAULT 'AVAILABLE' CHECK(availability_status IN ('AVAILABLE', 'BUSY', 'UNAVAILABLE', 'ON_BREAK')),
-      working_days TEXT NOT NULL DEFAULT 'Mon,Tue,Wed,Thu,Fri,Sat',
+      working_days TEXT NOT NULL DEFAULT 'Mon,Tue,Wed,Thu,Fri,Sat,Sun',
       shift_start_time TEXT NOT NULL DEFAULT '08:00',
       shift_end_time TEXT NOT NULL DEFAULT '18:00',
       reserved_emergency_capacity TEXT DEFAULT '11:00-11:30',
@@ -319,11 +334,14 @@ export function initDatabase(autoSeed = true) {
   try { db.exec("ALTER TABLE job_offers ADD COLUMN scheduling_run_id TEXT;"); } catch {}
   try { db.exec("ALTER TABLE bookings ADD COLUMN is_demo_tracking INTEGER NOT NULL DEFAULT 0;"); } catch {}
 
-  // Check if initial full seed is needed
+  // Check if initial full seed is needed (ONLY on brand new empty database)
   if (autoSeed) {
-    const techCount = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'TECHNICIAN'").get() as { count: number };
-    if (techCount.count < 20) {
-      resetAndSeedDatabase(true);
+    const userCount = db.prepare("SELECT COUNT(*) as count FROM users").get() as { count: number };
+    if (userCount.count === 0) {
+      console.log("[DispatchGrid] Brand new empty database detected. Populating initial seed dataset...");
+      resetAndSeedDatabase(false);
+    } else {
+      console.log(`[DispatchGrid] Persistent database detected with ${userCount.count} registered users. Preserving existing data.`);
     }
   }
 }

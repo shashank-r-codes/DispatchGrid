@@ -6,7 +6,11 @@ import { randomUUID } from "crypto";
 
 export const uploadRouter = Router();
 
-const UPLOADS_DIR = path.resolve(process.cwd(), "uploads");
+export const UPLOADS_DIR = process.env.UPLOADS_PATH
+  ? path.resolve(process.env.UPLOADS_PATH)
+  : (process.env.DATABASE_PATH
+      ? path.join(path.dirname(path.resolve(process.env.DATABASE_PATH)), "uploads")
+      : path.resolve(process.cwd(), "uploads"));
 
 // Ensure uploads directory exists
 if (!fs.existsSync(UPLOADS_DIR)) {
